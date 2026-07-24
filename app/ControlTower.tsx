@@ -288,10 +288,16 @@ export function ControlTower({
     },
     {
       name: "Materials",
-      status: "Blocked",
-      tone: "blocked",
-      signal: `${materialBlockers.length} residual blockers`,
-      detail: `${materialBlockers[0].name} leads at ${number.format(materialBlockers[0].shortage)} ${materialBlockers[0].uom}`,
+      status: materialBlockers.length > 0 ? "Blocked" : "Ready",
+      tone: materialBlockers.length > 0 ? "blocked" : "healthy",
+      signal:
+        materialBlockers.length > 0
+          ? `${materialBlockers.length} residual blockers`
+          : "No residual blockers",
+      detail:
+        materialBlockers.length > 0
+          ? `${materialBlockers[0].name} leads at ${number.format(materialBlockers[0].shortage)} ${materialBlockers[0].uom}`
+          : "Current material feasibility check has no unresolved shortage",
       target: "production",
     },
     {
@@ -437,9 +443,10 @@ export function ControlTower({
                 <span className="eyebrow">End-to-end command view</span>
                 <h1 id="control-title">Control the chain, not just the stock.</h1>
                 <p>
-                  The network has visible stock, but the August release path is
-                  blocked by demand coverage, materials and approval gaps. Start
-                  with the first action below, then follow the chain downstream.
+                  The network has qualified stock signals, but the August release
+                  path is blocked by demand coverage, materials and approval gaps.
+                  Start with the first action below, then follow the chain
+                  downstream.
                 </p>
               </div>
               <div className="control-verdict" aria-label="Current chain verdict">
@@ -458,13 +465,16 @@ export function ControlTower({
             </section>
 
             <section className="control-summary" aria-label="Supply chain summary">
-              <article className="control-summary-card healthy">
-                <span>Healthy signal</span>
+              <article className="control-summary-card visible">
+                <span>Qualified network signal</span>
                 <strong>
                   {number.format(seed.liveReconciliation.all.projected)} projected
                   network units
                 </strong>
-                <p>Stock is visible across JM and the distributor network.</p>
+                <p>
+                  Calculated from reported JM and distributor positions;{" "}
+                  {missingDistributorOpenings} openings remain unconfirmed.
+                </p>
               </article>
               <article className="control-summary-card blocked">
                 <span>Blocked now</span>
@@ -496,7 +506,6 @@ export function ControlTower({
                 {controlStages.map((stage, index) => (
                   <li className={`stage-card ${stage.tone}`} key={stage.name}>
                     <button
-                      aria-label={`Open ${stage.name} details`}
                       onClick={() => setView(stage.target)}
                       type="button"
                     >

@@ -1510,7 +1510,7 @@ td small {
   line-height: 1.5;
 }
 
-.control-summary-card.healthy {
+.control-summary-card.visible {
   border-color: #9fc0aa;
   background: #e5eee7;
 }
