@@ -1,0 +1,1170 @@
+{
+  "generatedAt": "2026-07-24T18:45:00+05:30",
+  "sourceAsOf": "24 Jul 2026",
+  "planningMonth": "August 2026",
+  "targets": {
+    "primaryPieces": null,
+    "secondaryPieces": null,
+    "status": "Not uploaded",
+    "note": "August primary and secondary targets are blank across every platform."
+  },
+  "openPo": {
+    "current": {
+      "pendingPieces": 343408,
+      "pendingLitres": 337951.8,
+      "poCount": 386,
+      "lineCount": 1971,
+      "byPlatform": [
+        {
+          "platform": "BIG BASKET",
+          "pendingPieces": 12702,
+          "pendingLitres": 11846,
+          "poCount": 23
+        },
+        {
+          "platform": "BLINKIT",
+          "pendingPieces": 24876,
+          "pendingLitres": 29412,
+          "poCount": 90
+        },
+        {
+          "platform": "FLIPKART GROCERY",
+          "pendingPieces": 32502,
+          "pendingLitres": 33526,
+          "poCount": 31
+        },
+        {
+          "platform": "SWIGGY",
+          "pendingPieces": 198210,
+          "pendingLitres": 194775,
+          "poCount": 180
+        },
+        {
+          "platform": "ZEPTO",
+          "pendingPieces": 74768,
+          "pendingLitres": 67682.8,
+          "poCount": 61
+        },
+        {
+          "platform": "ZOMATO",
+          "pendingPieces": 350,
+          "pendingLitres": 710,
+          "poCount": 1
+        }
+      ]
+    },
+    "planningMonth": {
+      "definition": "Open PO balance with an expiry date in August 2026",
+      "pendingPieces": 216596,
+      "pendingLitres": 197058.6,
+      "poCount": 193,
+      "lineCount": 1070,
+      "byScope": {
+        "premium": 87510,
+        "commodity": 93858,
+        "other": 3132,
+        "unmapped": 32096
+      },
+      "mappingGapPieces": 32096,
+      "planCoverage": {
+        "matchedPieces": 148789,
+        "mappedOutsidePlanPieces": 35711,
+        "unmappedPieces": 32096,
+        "calculationBlockedPieces": 67807,
+        "mappedOutsidePlan": [
+          {
+            "name": "GROUNDNUT 200ML",
+            "itemHead": "PREMIUM",
+            "pendingPieces": 13968,
+            "pendingLitres": 2793.6000000000004,
+            "poCount": 20,
+            "lineCount": 20,
+            "platforms": [
+              "ZEPTO"
+            ]
+          },
+          {
+            "name": "GOLD 1L",
+            "itemHead": "COMMODITY",
+            "pendingPieces": 7040,
+            "pendingLitres": 7040,
+            "poCount": 37,
+            "lineCount": 37,
+            "platforms": [
+              "SWIGGY"
+            ]
+          },
+          {
+            "name": "EXTRA VIRGIN 250ML",
+            "itemHead": "PREMIUM",
+            "pendingPieces": 2648,
+            "pendingLitres": 662,
+            "poCount": 20,
+            "lineCount": 20,
+            "platforms": [
+              "SWIGGY"
+            ]
+          },
+          {
+            "name": "GROUNDNUT 2L",
+            "itemHead": "PREMIUM",
+            "pendingPieces": 1780,
+            "pendingLitres": 3560,
+            "poCount": 19,
+            "lineCount": 19,
+            "platforms": [
+              "SWIGGY"
+            ]
+          },
+          {
+            "name": "RICE BRAN 1L",
+            "itemHead": "COMMODITY",
+            "pendingPieces": 1648,
+            "pendingLitres": 1648,
+            "poCount": 28,
+            "lineCount": 28,
+            "platforms": [
+              "SWIGGY",
+              "ZEPTO"
+            ]
+          },
+          {
+            "name": "SO OLIVE 1L",
+            "itemHead": "PREMIUM",
+            "pendingPieces": 848,
+            "pendingLitres": 848,
+            "poCount": 26,
+            "lineCount": 26,
+            "platforms": [
+              "SWIGGY"
+            ]
+          },
+          {
+            "name": "SESAME OIL 1L",
+            "itemHead": "PREMIUM",
+            "pendingPieces": 840,
+            "pendingLitres": 840,
+            "poCount": 7,
+            "lineCount": 7,
+            "platforms": [
+              "SWIGGY"
+            ]
+          },
+          {
+            "name": "YELLOW MUSTARD 1L",
+            "itemHead": "PREMIUM",
+            "pendingPieces": 816,
+            "pendingLitres": 816,
+            "poCount": 9,
+            "lineCount": 9,
+            "platforms": [
+              "SWIGGY"
+            ]
+          },
+          {
+            "name": "CANOLA 1L POUCH",
+            "itemHead": "PREMIUM",
+            "pendingPieces": 588,
+            "pendingLitres": 588,
+            "poCount": 6,
+            "lineCount": 6,
+            "platforms": [
+              "BIG BASKET",
+              "ZEPTO"
+            ]
+          },
+          {
+            "name": "GOLD 5L",
+            "itemHead": "COMMODITY",
+            "pendingPieces": 516,
+            "pendingLitres": 2580,
+            "poCount": 28,
+            "lineCount": 28,
+            "platforms": [
+              "SWIGGY"
+            ]
+          },
+          {
+            "name": "EXTRA LIGHT 2L",
+            "itemHead": "PREMIUM",
+            "pendingPieces": 430,
+            "pendingLitres": 860,
+            "poCount": 28,
+            "lineCount": 28,
+            "platforms": [
+              "BIG BASKET",
+              "BLINKIT",
+              "SWIGGY",
+              "ZEPTO"
+            ]
+          },
+          {
+            "name": "EXTRA VIRGIN 200ML",
+            "itemHead": "PREMIUM",
+            "pendingPieces": 420,
+            "pendingLitres": 84,
+            "poCount": 7,
+            "lineCount": 7,
+            "platforms": [
+              "ZEPTO"
+            ]
+          },
+          {
+            "name": "CANOLA 1+1L",
+            "itemHead": "PREMIUM",
+            "pendingPieces": 356,
+            "pendingLitres": 712,
+            "poCount": 5,
+            "lineCount": 5,
+            "platforms": [
+              "ZEPTO"
+            ]
+          },
+          {
+            "name": "JIVO POMACE 2L",
+            "itemHead": "PREMIUM",
+            "pendingPieces": 339,
+            "pendingLitres": 678,
+            "poCount": 23,
+            "lineCount": 23,
+            "platforms": [
+              "SWIGGY",
+              "ZEPTO"
+            ]
+          },
+          {
+            "name": "WG GINGER ALE 200ML",
+            "itemHead": "OTHER",
+            "pendingPieces": 304,
+            "pendingLitres": 0,
+            "poCount": 3,
+            "lineCount": 3,
+            "platforms": [
+              "BIG BASKET"
+            ]
+          },
+          {
+            "name": "WG MOJITO SF 200ML",
+            "itemHead": "OTHER",
+            "pendingPieces": 300,
+            "pendingLitres": 0,
+            "poCount": 4,
+            "lineCount": 4,
+            "platforms": [
+              "BIG BASKET"
+            ]
+          },
+          {
+            "name": "WG MANGO JUICE 200ML",
+            "itemHead": "OTHER",
+            "pendingPieces": 272,
+            "pendingLitres": 0,
+            "poCount": 5,
+            "lineCount": 5,
+            "platforms": [
+              "BIG BASKET"
+            ]
+          },
+          {
+            "name": "WG MANGO JUICE 500ML",
+            "itemHead": "OTHER",
+            "pendingPieces": 268,
+            "pendingLitres": 0,
+            "poCount": 4,
+            "lineCount": 4,
+            "platforms": [
+              "BIG BASKET"
+            ]
+          },
+          {
+            "name": "WG APPLE JUICE SF 200ML",
+            "itemHead": "OTHER",
+            "pendingPieces": 250,
+            "pendingLitres": 0,
+            "poCount": 4,
+            "lineCount": 4,
+            "platforms": [
+              "BIG BASKET"
+            ]
+          },
+          {
+            "name": "LEMON 750ML",
+            "itemHead": "OTHER",
+            "pendingPieces": 246,
+            "pendingLitres": 0,
+            "poCount": 4,
+            "lineCount": 4,
+            "platforms": [
+              "BIG BASKET"
+            ]
+          },
+          {
+            "name": "WG BLUEBERRY JUICE 200ML",
+            "itemHead": "OTHER",
+            "pendingPieces": 245,
+            "pendingLitres": 0,
+            "poCount": 4,
+            "lineCount": 4,
+            "platforms": [
+              "BIG BASKET"
+            ]
+          },
+          {
+            "name": "WG ROSE 200ML",
+            "itemHead": "OTHER",
+            "pendingPieces": 226,
+            "pendingLitres": 0,
+            "poCount": 4,
+            "lineCount": 4,
+            "platforms": [
+              "BIG BASKET"
+            ]
+          },
+          {
+            "name": "WG APPLE JUICE 200ML",
+            "itemHead": "OTHER",
+            "pendingPieces": 216,
+            "pendingLitres": 0,
+            "poCount": 3,
+            "lineCount": 3,
+            "platforms": [
+              "BIG BASKET"
+            ]
+          },
+          {
+            "name": "WATER 1L",
+            "itemHead": "OTHER",
+            "pendingPieces": 216,
+            "pendingLitres": 0,
+            "poCount": 9,
+            "lineCount": 9,
+            "platforms": [
+              "SWIGGY"
+            ]
+          },
+          {
+            "name": "WG MOJITO 200ML",
+            "itemHead": "OTHER",
+            "pendingPieces": 206,
+            "pendingLitres": 0,
+            "poCount": 3,
+            "lineCount": 3,
+            "platforms": [
+              "BIG BASKET"
+            ]
+          },
+          {
+            "name": "WATER PEACH 750ML",
+            "itemHead": "OTHER",
+            "pendingPieces": 194,
+            "pendingLitres": 0,
+            "poCount": 4,
+            "lineCount": 4,
+            "platforms": [
+              "BIG BASKET"
+            ]
+          },
+          {
+            "name": "EXTRA VIRGIN 1L",
+            "itemHead": "PREMIUM",
+            "pendingPieces": 132,
+            "pendingLitres": 132,
+            "poCount": 7,
+            "lineCount": 7,
+            "platforms": [
+              "BIG BASKET",
+              "SWIGGY",
+              "ZEPTO"
+            ]
+          },
+          {
+            "name": "CANOLA 5+1L",
+            "itemHead": "PREMIUM",
+            "pendingPieces": 114,
+            "pendingLitres": 684,
+            "poCount": 19,
+            "lineCount": 19,
+            "platforms": [
+              "SWIGGY"
+            ]
+          },
+          {
+            "name": "TONIC WATER 200ML",
+            "itemHead": "OTHER",
+            "pendingPieces": 93,
+            "pendingLitres": 0,
+            "poCount": 4,
+            "lineCount": 4,
+            "platforms": [
+              "BIG BASKET"
+            ]
+          },
+          {
+            "name": "SODA LEMON 750 ML",
+            "itemHead": "OTHER",
+            "pendingPieces": 84,
+            "pendingLitres": 0,
+            "poCount": 2,
+            "lineCount": 2,
+            "platforms": [
+              "SWIGGY"
+            ]
+          },
+          {
+            "name": "EXTRA LIGHT 5L",
+            "itemHead": "PREMIUM",
+            "pendingPieces": 48,
+            "pendingLitres": 240,
+            "poCount": 3,
+            "lineCount": 3,
+            "platforms": [
+              "SWIGGY"
+            ]
+          },
+          {
+            "name": "CANOLA 15L",
+            "itemHead": "PREMIUM",
+            "pendingPieces": 48,
+            "pendingLitres": 720,
+            "poCount": 2,
+            "lineCount": 2,
+            "platforms": [
+              "ZEPTO"
+            ]
+          },
+          {
+            "name": "SODA PEACH 750ML",
+            "itemHead": "OTHER",
+            "pendingPieces": 12,
+            "pendingLitres": 0,
+            "poCount": 1,
+            "lineCount": 1,
+            "platforms": [
+              "SWIGGY"
+            ]
+          }
+        ]
+      },
+      "byPlatform": [
+        {
+          "platform": "SWIGGY",
+          "pendingPieces": 115515,
+          "pendingLitres": 103084,
+          "poCount": 96,
+          "lineCount": 652
+        },
+        {
+          "platform": "ZEPTO",
+          "pendingPieces": 70356,
+          "pendingLitres": 63289.6,
+          "poCount": 57,
+          "lineCount": 268
+        },
+        {
+          "platform": "FLIPKART GROCERY",
+          "pendingPieces": 21030,
+          "pendingLitres": 21030,
+          "poCount": 23,
+          "lineCount": 39
+        },
+        {
+          "platform": "BIG BASKET",
+          "pendingPieces": 8855,
+          "pendingLitres": 8461,
+          "poCount": 11,
+          "lineCount": 93
+        },
+        {
+          "platform": "BLINKIT",
+          "pendingPieces": 840,
+          "pendingLitres": 1194,
+          "poCount": 6,
+          "lineCount": 18
+        }
+      ],
+      "byProduct": [
+        {
+          "name": "MUSTARD 1L",
+          "itemHead": "COMMODITY",
+          "pendingPieces": 52308,
+          "pendingLitres": 52308,
+          "poCount": 109,
+          "lineCount": 109,
+          "platforms": [
+            "BIG BASKET",
+            "FLIPKART GROCERY",
+            "SWIGGY",
+            "ZEPTO"
+          ]
+        },
+        {
+          "name": "GROUNDNUT 1L",
+          "itemHead": "PREMIUM",
+          "pendingPieces": 49280,
+          "pendingLitres": 49280,
+          "poCount": 85,
+          "lineCount": 85,
+          "platforms": [
+            "SWIGGY",
+            "ZEPTO"
+          ]
+        },
+        {
+          "name": "UNMAPPED",
+          "itemHead": "UNMAPPED",
+          "pendingPieces": 32096,
+          "pendingLitres": 0,
+          "poCount": 12,
+          "lineCount": 67,
+          "platforms": [
+            "SWIGGY"
+          ]
+        },
+        {
+          "name": "SUNFLOWER 1L",
+          "itemHead": "COMMODITY",
+          "pendingPieces": 28140,
+          "pendingLitres": 28140,
+          "poCount": 91,
+          "lineCount": 91,
+          "platforms": [
+            "BIG BASKET",
+            "BLINKIT",
+            "SWIGGY",
+            "ZEPTO"
+          ]
+        },
+        {
+          "name": "GROUNDNUT 200ML",
+          "itemHead": "PREMIUM",
+          "pendingPieces": 13968,
+          "pendingLitres": 2793.6000000000004,
+          "poCount": 20,
+          "lineCount": 20,
+          "platforms": [
+            "ZEPTO"
+          ]
+        },
+        {
+          "name": "GOLD 1L",
+          "itemHead": "COMMODITY",
+          "pendingPieces": 7040,
+          "pendingLitres": 7040,
+          "poCount": 37,
+          "lineCount": 37,
+          "platforms": [
+            "SWIGGY"
+          ]
+        },
+        {
+          "name": "JIVO POMACE 1L",
+          "itemHead": "PREMIUM",
+          "pendingPieces": 5450,
+          "pendingLitres": 5450,
+          "poCount": 72,
+          "lineCount": 72,
+          "platforms": [
+            "BIG BASKET",
+            "BLINKIT",
+            "FLIPKART GROCERY",
+            "SWIGGY",
+            "ZEPTO"
+          ]
+        },
+        {
+          "name": "EXTRA LIGHT 1L",
+          "itemHead": "PREMIUM",
+          "pendingPieces": 4778,
+          "pendingLitres": 4778,
+          "poCount": 65,
+          "lineCount": 65,
+          "platforms": [
+            "BIG BASKET",
+            "BLINKIT",
+            "SWIGGY",
+            "ZEPTO"
+          ]
+        },
+        {
+          "name": "CANOLA 1L",
+          "itemHead": "PREMIUM",
+          "pendingPieces": 3137,
+          "pendingLitres": 3137,
+          "poCount": 57,
+          "lineCount": 57,
+          "platforms": [
+            "BIG BASKET",
+            "BLINKIT",
+            "FLIPKART GROCERY",
+            "SWIGGY",
+            "ZEPTO"
+          ]
+        },
+        {
+          "name": "SUNFLOWER 5L",
+          "itemHead": "COMMODITY",
+          "pendingPieces": 2834,
+          "pendingLitres": 14170,
+          "poCount": 51,
+          "lineCount": 51,
+          "platforms": [
+            "BIG BASKET",
+            "SWIGGY"
+          ]
+        },
+        {
+          "name": "EXTRA VIRGIN 250ML",
+          "itemHead": "PREMIUM",
+          "pendingPieces": 2648,
+          "pendingLitres": 662,
+          "poCount": 20,
+          "lineCount": 20,
+          "platforms": [
+            "SWIGGY"
+          ]
+        },
+        {
+          "name": "GROUNDNUT 2L",
+          "itemHead": "PREMIUM",
+          "pendingPieces": 1780,
+          "pendingLitres": 3560,
+          "poCount": 19,
+          "lineCount": 19,
+          "platforms": [
+            "SWIGGY"
+          ]
+        },
+        {
+          "name": "RICE BRAN 1L",
+          "itemHead": "COMMODITY",
+          "pendingPieces": 1648,
+          "pendingLitres": 1648,
+          "poCount": 28,
+          "lineCount": 28,
+          "platforms": [
+            "SWIGGY",
+            "ZEPTO"
+          ]
+        },
+        {
+          "name": "MUSTARD 5L",
+          "itemHead": "COMMODITY",
+          "pendingPieces": 1184,
+          "pendingLitres": 5920,
+          "poCount": 48,
+          "lineCount": 48,
+          "platforms": [
+            "BIG BASKET",
+            "SWIGGY",
+            "ZEPTO"
+          ]
+        },
+        {
+          "name": "GROUNDNUT 5L",
+          "itemHead": "PREMIUM",
+          "pendingPieces": 876,
+          "pendingLitres": 4380,
+          "poCount": 17,
+          "lineCount": 17,
+          "platforms": [
+            "SWIGGY"
+          ]
+        },
+        {
+          "name": "SO OLIVE 1L",
+          "itemHead": "PREMIUM",
+          "pendingPieces": 848,
+          "pendingLitres": 848,
+          "poCount": 26,
+          "lineCount": 26,
+          "platforms": [
+            "SWIGGY"
+          ]
+        },
+        {
+          "name": "SESAME OIL 1L",
+          "itemHead": "PREMIUM",
+          "pendingPieces": 840,
+          "pendingLitres": 840,
+          "poCount": 7,
+          "lineCount": 7,
+          "platforms": [
+            "SWIGGY"
+          ]
+        },
+        {
+          "name": "YELLOW MUSTARD 1L",
+          "itemHead": "PREMIUM",
+          "pendingPieces": 816,
+          "pendingLitres": 816,
+          "poCount": 9,
+          "lineCount": 9,
+          "platforms": [
+            "SWIGGY"
+          ]
+        },
+        {
+          "name": "CANOLA 1L POUCH",
+          "itemHead": "PREMIUM",
+          "pendingPieces": 588,
+          "pendingLitres": 588,
+          "poCount": 6,
+          "lineCount": 6,
+          "platforms": [
+            "BIG BASKET",
+            "ZEPTO"
+          ]
+        },
+        {
+          "name": "GOLD 5L",
+          "itemHead": "COMMODITY",
+          "pendingPieces": 516,
+          "pendingLitres": 2580,
+          "poCount": 28,
+          "lineCount": 28,
+          "platforms": [
+            "SWIGGY"
+          ]
+        },
+        {
+          "name": "EXTRA LIGHT 2L",
+          "itemHead": "PREMIUM",
+          "pendingPieces": 430,
+          "pendingLitres": 860,
+          "poCount": 28,
+          "lineCount": 28,
+          "platforms": [
+            "BIG BASKET",
+            "BLINKIT",
+            "SWIGGY",
+            "ZEPTO"
+          ]
+        },
+        {
+          "name": "EXTRA VIRGIN 200ML",
+          "itemHead": "PREMIUM",
+          "pendingPieces": 420,
+          "pendingLitres": 84,
+          "poCount": 7,
+          "lineCount": 7,
+          "platforms": [
+            "ZEPTO"
+          ]
+        },
+        {
+          "name": "CANOLA 1+1L",
+          "itemHead": "PREMIUM",
+          "pendingPieces": 356,
+          "pendingLitres": 712,
+          "poCount": 5,
+          "lineCount": 5,
+          "platforms": [
+            "ZEPTO"
+          ]
+        },
+        {
+          "name": "JIVO POMACE 2L",
+          "itemHead": "PREMIUM",
+          "pendingPieces": 339,
+          "pendingLitres": 678,
+          "poCount": 23,
+          "lineCount": 23,
+          "platforms": [
+            "SWIGGY",
+            "ZEPTO"
+          ]
+        },
+        {
+          "name": "CANOLA 5L",
+          "itemHead": "PREMIUM",
+          "pendingPieces": 338,
+          "pendingLitres": 1690,
+          "poCount": 14,
+          "lineCount": 14,
+          "platforms": [
+            "BIG BASKET",
+            "BLINKIT",
+            "ZEPTO"
+          ]
+        },
+        {
+          "name": "WG GINGER ALE 200ML",
+          "itemHead": "OTHER",
+          "pendingPieces": 304,
+          "pendingLitres": 0,
+          "poCount": 3,
+          "lineCount": 3,
+          "platforms": [
+            "BIG BASKET"
+          ]
+        },
+        {
+          "name": "WG MOJITO SF 200ML",
+          "itemHead": "OTHER",
+          "pendingPieces": 300,
+          "pendingLitres": 0,
+          "poCount": 4,
+          "lineCount": 4,
+          "platforms": [
+            "BIG BASKET"
+          ]
+        },
+        {
+          "name": "JIVO POMACE 5L",
+          "itemHead": "PREMIUM",
+          "pendingPieces": 276,
+          "pendingLitres": 1380,
+          "poCount": 26,
+          "lineCount": 26,
+          "platforms": [
+            "SWIGGY",
+            "ZEPTO"
+          ]
+        },
+        {
+          "name": "WG MANGO JUICE 200ML",
+          "itemHead": "OTHER",
+          "pendingPieces": 272,
+          "pendingLitres": 0,
+          "poCount": 5,
+          "lineCount": 5,
+          "platforms": [
+            "BIG BASKET"
+          ]
+        },
+        {
+          "name": "WG MANGO JUICE 500ML",
+          "itemHead": "OTHER",
+          "pendingPieces": 268,
+          "pendingLitres": 0,
+          "poCount": 4,
+          "lineCount": 4,
+          "platforms": [
+            "BIG BASKET"
+          ]
+        },
+        {
+          "name": "WG APPLE JUICE SF 200ML",
+          "itemHead": "OTHER",
+          "pendingPieces": 250,
+          "pendingLitres": 0,
+          "poCount": 4,
+          "lineCount": 4,
+          "platforms": [
+            "BIG BASKET"
+          ]
+        },
+        {
+          "name": "LEMON 750ML",
+          "itemHead": "OTHER",
+          "pendingPieces": 246,
+          "pendingLitres": 0,
+          "poCount": 4,
+          "lineCount": 4,
+          "platforms": [
+            "BIG BASKET"
+          ]
+        },
+        {
+          "name": "WG BLUEBERRY JUICE 200ML",
+          "itemHead": "OTHER",
+          "pendingPieces": 245,
+          "pendingLitres": 0,
+          "poCount": 4,
+          "lineCount": 4,
+          "platforms": [
+            "BIG BASKET"
+          ]
+        },
+        {
+          "name": "WG ROSE 200ML",
+          "itemHead": "OTHER",
+          "pendingPieces": 226,
+          "pendingLitres": 0,
+          "poCount": 4,
+          "lineCount": 4,
+          "platforms": [
+            "BIG BASKET"
+          ]
+        },
+        {
+          "name": "WG APPLE JUICE 200ML",
+          "itemHead": "OTHER",
+          "pendingPieces": 216,
+          "pendingLitres": 0,
+          "poCount": 3,
+          "lineCount": 3,
+          "platforms": [
+            "BIG BASKET"
+          ]
+        },
+        {
+          "name": "WATER 1L",
+          "itemHead": "OTHER",
+          "pendingPieces": 216,
+          "pendingLitres": 0,
+          "poCount": 9,
+          "lineCount": 9,
+          "platforms": [
+            "SWIGGY"
+          ]
+        },
+        {
+          "name": "WG MOJITO 200ML",
+          "itemHead": "OTHER",
+          "pendingPieces": 206,
+          "pendingLitres": 0,
+          "poCount": 3,
+          "lineCount": 3,
+          "platforms": [
+            "BIG BASKET"
+          ]
+        },
+        {
+          "name": "WATER PEACH 750ML",
+          "itemHead": "OTHER",
+          "pendingPieces": 194,
+          "pendingLitres": 0,
+          "poCount": 4,
+          "lineCount": 4,
+          "platforms": [
+            "BIG BASKET"
+          ]
+        },
+        {
+          "name": "RICE BRAN 5L",
+          "itemHead": "COMMODITY",
+          "pendingPieces": 188,
+          "pendingLitres": 940,
+          "poCount": 16,
+          "lineCount": 16,
+          "platforms": [
+            "SWIGGY"
+          ]
+        },
+        {
+          "name": "EXTRA VIRGIN 1L",
+          "itemHead": "PREMIUM",
+          "pendingPieces": 132,
+          "pendingLitres": 132,
+          "poCount": 7,
+          "lineCount": 7,
+          "platforms": [
+            "BIG BASKET",
+            "SWIGGY",
+            "ZEPTO"
+          ]
+        },
+        {
+          "name": "CANOLA 5+1L",
+          "itemHead": "PREMIUM",
+          "pendingPieces": 114,
+          "pendingLitres": 684,
+          "poCount": 19,
+          "lineCount": 19,
+          "platforms": [
+            "SWIGGY"
+          ]
+        },
+        {
+          "name": "TONIC WATER 200ML",
+          "itemHead": "OTHER",
+          "pendingPieces": 93,
+          "pendingLitres": 0,
+          "poCount": 4,
+          "lineCount": 4,
+          "platforms": [
+            "BIG BASKET"
+          ]
+        },
+        {
+          "name": "SODA LEMON 750 ML",
+          "itemHead": "OTHER",
+          "pendingPieces": 84,
+          "pendingLitres": 0,
+          "poCount": 2,
+          "lineCount": 2,
+          "platforms": [
+            "SWIGGY"
+          ]
+        },
+        {
+          "name": "EXTRA LIGHT 5L",
+          "itemHead": "PREMIUM",
+          "pendingPieces": 48,
+          "pendingLitres": 240,
+          "poCount": 3,
+          "lineCount": 3,
+          "platforms": [
+            "SWIGGY"
+          ]
+        },
+        {
+          "name": "CANOLA 15L",
+          "itemHead": "PREMIUM",
+          "pendingPieces": 48,
+          "pendingLitres": 720,
+          "poCount": 2,
+          "lineCount": 2,
+          "platforms": [
+            "ZEPTO"
+          ]
+        },
+        {
+          "name": "SODA PEACH 750ML",
+          "itemHead": "OTHER",
+          "pendingPieces": 12,
+          "pendingLitres": 0,
+          "poCount": 1,
+          "lineCount": 1,
+          "platforms": [
+            "SWIGGY"
+          ]
+        }
+      ],
+      "unmapped": [
+        {
+          "skuName": "Jivo Cold Press Kachi Ghani Mustard Oil 200.0 ml",
+          "pendingPieces": 27440,
+          "poCount": 11,
+          "platform": "SWIGGY"
+        },
+        {
+          "skuName": "Jivo Cold Press Sunflower Oil 500.0 ml",
+          "pendingPieces": 1248,
+          "poCount": 11,
+          "platform": "SWIGGY"
+        },
+        {
+          "skuName": "Jivo Cold Press Kachi Ghani Mustard Oil 500.0 ml",
+          "pendingPieces": 1248,
+          "poCount": 11,
+          "platform": "SWIGGY"
+        },
+        {
+          "skuName": "Jivo Cold Press Canola Oil 500.0 ml",
+          "pendingPieces": 840,
+          "poCount": 11,
+          "platform": "SWIGGY"
+        },
+        {
+          "skuName": "Jivo Sesame Oil 500.0 ml",
+          "pendingPieces": 648,
+          "poCount": 11,
+          "platform": "SWIGGY"
+        },
+        {
+          "skuName": "Jivo Cold Press Groundnut Oil 500.0 ml",
+          "pendingPieces": 648,
+          "poCount": 11,
+          "platform": "SWIGGY"
+        },
+        {
+          "skuName": "Jivo Cold Pressed Kachi Ghani Mustard Oil 1.0 ltr",
+          "pendingPieces": 24,
+          "poCount": 1,
+          "platform": "SWIGGY"
+        }
+      ]
+    }
+  },
+  "dealSignal": {
+    "status": "Signal only",
+    "note": "Campaign and brand-fund feeds show current promotion activity, but no August deal date, discount, probability or expected PO quantity."
+  },
+  "factoryPlanning": {
+    "status": "SAP checked; factory execution access still needed",
+    "officialForecast": {
+      "latestCode": "JULY 2026",
+      "latestLines": 133,
+      "latestQuantity": 2557610,
+      "augustExists": false,
+      "augustProductionOrders": 0,
+      "warehouse": "GP-FG",
+      "forecastedDay": "2026-08-01",
+      "requiredLineFields": [
+        "ItemNo",
+        "Quantity",
+        "Warehouse",
+        "ForecastedDay"
+      ]
+    },
+    "capacity": {
+      "status": "Likely non-binding at current draft",
+      "workingDaysAssumption": 26,
+      "premiumResource": {
+        "code": "001",
+        "medianDailyLitres": 30284,
+        "draftLoadLitres": 208791,
+        "medianOperatingDays": 6.9
+      },
+      "commodityResource": {
+        "code": "002",
+        "medianDailyLitres": 39780,
+        "draftLoadLitres": 267436,
+        "medianOperatingDays": 6.7
+      },
+      "caveat": "Future SAP resource capacity is not configured; shifts, physical line overlap and changeovers still need factory confirmation."
+    },
+    "batchRules": {
+      "configuredMoq": false,
+      "configuredOrderMultiple": false,
+      "configuredLeadTime": false,
+      "rule": "Use case/BOM pack rounding only until the factory confirms minimum runs and changeovers."
+    },
+    "materials": {
+      "status": "6 residual blockers after assuming all current on-order arrives",
+      "blockers": [
+        {
+          "code": "RM0000011",
+          "name": "Groundnut loose oil",
+          "shortage": 161522,
+          "uom": "L"
+        },
+        {
+          "code": "PM0000121",
+          "name": "Pomace 1L PET bottle",
+          "shortage": 76348,
+          "uom": "pcs"
+        },
+        {
+          "code": "RM0000002",
+          "name": "Canola cold-press loose oil",
+          "shortage": 60532,
+          "uom": "L"
+        },
+        {
+          "code": "RM0000009",
+          "name": "Refined sunflower oil",
+          "shortage": 54823,
+          "uom": "L"
+        },
+        {
+          "code": "PM0000426",
+          "name": "Groundnut 1L back label",
+          "shortage": 16985,
+          "uom": "pcs"
+        },
+        {
+          "code": "PM0000425",
+          "name": "Groundnut 1L front label",
+          "shortage": 16690,
+          "uom": "pcs"
+        }
+      ],
+      "caveat": "On-order due dates and required warehouse transfers are not yet verified."
+    },
+    "approvals": {
+      "sapApprovalConfigured": false,
+      "note": "No active SAP approval template covers SalesForecast or ProductionOrder; sign-off is manual."
+    },
+    "identityGuard": {
+      "rule": "Join inventory and production SKUs by company/schema plus code.",
+      "warning": "FG0000421 and FG0000422 mean different products in the Oil SAP schema than in the e-commerce/JM source."
+    }
+  },
+  "controls": {
+    "demandRule": "Use the higher of baseline demand and mapped August open PO balance; add only an explicitly selected deal reserve.",
+    "submissionRule": "Keep the result as a draft until mappings, factory capacity, material feasibility and approvers are confirmed."
+  }
+}

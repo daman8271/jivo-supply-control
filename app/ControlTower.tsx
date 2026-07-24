@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 type Seed = typeof import("./data/seed.json");
 type ProductionPlan = typeof import("./data/production-plan.json");
+type ProductionSignals = typeof import("./data/production-signals.json");
 type View =
   | "overview"
   | "inventory"
@@ -89,20 +90,42 @@ const nav: { id: View; label: string; short: string }[] = [
 export function ControlTower({
   seed,
   productionPlan,
+  productionSignals,
 }: {
   seed: Seed;
   productionPlan: ProductionPlan;
+  productionSignals: ProductionSignals;
 }) {
   const [view, setView] = useState<View>("overview");
   const [scope, setScope] = useState<Scope>("premium");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
-  const [growthPct, setGrowthPct] = useState(0);
+  const [dealReservePct, setDealReservePct] = useState(0);
   const [safetyDays, setSafetyDays] = useState(
     productionPlan.defaultAssumptions.safetyDays,
   );
 
   const liveTotals = seed.liveReconciliation[scope];
+  const augustPoByProduct = useMemo(
+    () =>
+      new Map(
+        productionSignals.openPo.planningMonth.byProduct.map((row) => [
+          row.name,
+          row,
+        ]),
+      ),
+    [productionSignals],
+  );
+  const augustPoFloor =
+    scope === "premium"
+      ? productionSignals.openPo.planningMonth.byScope.premium
+      : productionSignals.openPo.planningMonth.pendingPieces;
+  const maxAugustPlatformPo = Math.max(
+    ...productionSignals.openPo.planningMonth.byPlatform.map(
+      (row) => row.pendingPieces,
+    ),
+    1,
+  );
 
   const adjustedProductionRows = useMemo(
     () =>
@@ -112,9 +135,15 @@ export function ControlTower({
             scope === "all" || row.itemHead.toUpperCase() === "PREMIUM",
         )
         .map((row) => {
-          const forecastPieces = Math.max(
+          const poFloorPieces =
+            augustPoByProduct.get(row.name)?.pendingPieces ?? 0;
+          const dealReservePieces = Math.max(
             0,
-            Math.round(row.baseForecastPieces * (1 + growthPct / 100)),
+            Math.round(row.baseForecastPieces * (dealReservePct / 100)),
+          );
+          const forecastPieces = Math.max(
+            row.baseForecastPieces + dealReservePieces,
+            poFloorPieces,
           );
           const safetyPieces = Math.ceil(
             (forecastPieces / productionPlan.defaultAssumptions.monthDays) *
@@ -137,6 +166,8 @@ export function ControlTower({
               : null;
           return {
             ...row,
+            poFloorPieces,
+            dealReservePieces,
             forecastPieces,
             safetyPieces,
             productionPieces,
@@ -156,13 +187,22 @@ export function ControlTower({
             second.productionPieces - first.productionPieces ||
             second.forecastPieces - first.forecastPieces,
         ),
-    [growthPct, productionPlan, safetyDays, scope],
+    [
+      augustPoByProduct,
+      dealReservePct,
+      productionPlan,
+      safetyDays,
+      scope,
+    ],
   );
 
   const adjustedProductionTotals = useMemo(
     () =>
       adjustedProductionRows.reduce(
         (totals, row) => {
+          totals.baseForecastPieces += row.baseForecastPieces;
+          totals.poFloorPieces += row.poFloorPieces;
+          totals.dealReservePieces += row.dealReservePieces;
           totals.forecastPieces += row.forecastPieces;
           totals.productionPieces += row.productionPieces;
           totals.productionCases += row.productionCases;
@@ -170,6 +210,9 @@ export function ControlTower({
           return totals;
         },
         {
+          baseForecastPieces: 0,
+          poFloorPieces: 0,
+          dealReservePieces: 0,
           forecastPieces: 0,
           productionPieces: 0,
           productionCases: 0,
@@ -200,33 +243,25 @@ export function ControlTower({
 
   function downloadProductionCsv() {
     const headings = [
-      "Planning Month",
-      "SKU",
-      "SAP Code",
-      "Scope",
-      "Forecast Pieces",
-      "Network Available",
-      "On Order",
-      "Safety Pieces",
-      "Production Pieces",
-      "Case Pack",
-      "Production Cases",
-      "Priority",
+      "ForecastCode",
+      "ForecastName",
+      "View",
+      "ItemNo",
+      "Quantity",
+      "Warehouse",
+      "ForecastedDay",
     ];
-    const rows = adjustedProductionRows.map((row) => [
-      productionPlan.planningMonth,
-      row.name,
-      row.sapCode ?? "",
-      row.itemHead,
-      row.forecastPieces,
-      row.networkAvailable,
-      row.onOrder,
-      row.safetyPieces,
-      row.productionPieces,
-      row.casePack,
-      row.productionCases,
-      row.priority,
-    ]);
+    const rows = adjustedProductionRows
+      .filter((row) => row.productionPieces > 0 && row.sapCode)
+      .map((row) => [
+        "AUGUST 2026",
+        "OIL Monthly Production Planning for the AUGUST Month 2026",
+        "Monthly",
+        row.sapCode ?? "",
+        row.productionPieces,
+        "GP-FG",
+        "2026-08-01",
+      ]);
     const csv = [headings, ...rows]
       .map((row) =>
         row
@@ -239,7 +274,7 @@ export function ControlTower({
     );
     const link = document.createElement("a");
     link.href = url;
-    link.download = `Jivo-production-plan-${productionPlan.planningMonth.replaceAll(" ", "-")}.csv`;
+    link.download = `Jivo-Oil-SalesForecast-${productionPlan.planningMonth.replaceAll(" ", "-")}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -675,7 +710,7 @@ export function ControlTower({
             <PageHeading
               eyebrow="Factory planning"
               title={`${productionPlan.planningMonth} production draft`}
-              description="A factory-ready monthly requirement built from recent e-commerce movement, live network stock and JM on-order quantities."
+              description="A working e-commerce plan that separates baseline demand, committed platform POs and an explicit reserve for deals that are not confirmed yet."
             />
 
             <section className="production-command">
@@ -683,8 +718,9 @@ export function ControlTower({
                 <span className="status-pill partial">{productionPlan.status}</span>
                 <strong>Scenario controls</strong>
                 <p>
-                  Adjust the demand uplift and safety cover. The requirement
-                  recalculates instantly and stays rounded to case packs.
+                  Committed August POs set a minimum demand floor. Add a deal
+                  reserve only when commercial discussions justify it; the
+                  result stays rounded to factory case packs.
                 </p>
               </div>
               <div className="production-actions">
@@ -709,7 +745,7 @@ export function ControlTower({
                   onClick={downloadProductionCsv}
                   type="button"
                 >
-                  Export factory CSV
+                  Export SAP forecast
                 </button>
               </div>
             </section>
@@ -717,19 +753,24 @@ export function ControlTower({
             <section className="planning-controls">
               <label>
                 <span>
-                  Demand adjustment
-                  <strong>{growthPct > 0 ? `+${growthPct}` : growthPct}%</strong>
+                  Unconfirmed deal reserve
+                  <strong>+{dealReservePct}%</strong>
                 </span>
                 <input
-                  aria-label="Demand adjustment percentage"
-                  max="30"
-                  min="-10"
-                  onChange={(event) => setGrowthPct(Number(event.target.value))}
+                  aria-label="Unconfirmed deal reserve percentage"
+                  max="50"
+                  min="0"
+                  onChange={(event) =>
+                    setDealReservePct(Number(event.target.value))
+                  }
                   step="5"
                   type="range"
-                  value={growthPct}
+                  value={dealReservePct}
                 />
-                <small>Use for promotions, launches or a cautious forecast.</small>
+                <small>
+                  A visible assumption for deals that may create extra POs; 0%
+                  means no unconfirmed deal volume.
+                </small>
               </label>
               <label>
                 <span>
@@ -745,54 +786,107 @@ export function ControlTower({
                   type="range"
                   value={safetyDays}
                 />
-                <small>Extra cover held after August forecast demand.</small>
+                <small>Extra cover held after the selected August plan demand.</small>
               </label>
               <div className="planning-method">
-                <span>Forecast method</span>
-                <strong>May–July weighted run-rate</strong>
-                <small>50% July · 30% June · 20% May</small>
+                <span>Demand selection rule</span>
+                <strong>Higher of base or committed POs</strong>
+                <small>
+                  Base: 50% July run-rate · 30% June · 20% May
+                </small>
               </div>
+            </section>
+
+            <section className="signal-stack" aria-label="Planning signal status">
+              <article>
+                <div>
+                  <span>01 · Baseline</span>
+                  <strong>Historical demand</strong>
+                </div>
+                <span className="status-pill have">Ready</span>
+                <p>May–July e-commerce movement, weighted toward July.</p>
+              </article>
+              <article>
+                <div>
+                  <span>02 · Committed</span>
+                  <strong>Platform POs</strong>
+                </div>
+                <span className="status-pill have">Live</span>
+                <p>
+                  {number.format(
+                    productionSignals.openPo.planningMonth.pendingPieces,
+                  )}{" "}
+                  pieces across{" "}
+                  {number.format(productionSignals.openPo.planningMonth.poCount)}{" "}
+                  POs expiring in August.
+                </p>
+              </article>
+              <article>
+                <div>
+                  <span>03 · Uncertain</span>
+                  <strong>Deal pipeline</strong>
+                </div>
+                <span className="status-pill need">Volumes missing</span>
+                <p>
+                  Promotion activity is visible, but August deal probability
+                  and expected PO quantity are not recorded.
+                </p>
+              </article>
+              <article>
+                <div>
+                  <span>04 · Feasibility</span>
+                  <strong>Factory + materials</strong>
+                </div>
+                <span className="status-pill partial">SAP checked</span>
+                <p>
+                  Capacity looks non-binding at the current draft, but{" "}
+                  {productionSignals.factoryPlanning.materials.blockers.length}{" "}
+                  material blockers and factory execution assumptions still
+                  need confirmation.
+                </p>
+              </article>
             </section>
 
             <section className="kpi-grid" aria-label="Production plan metrics">
               <Metric
-                label="August forecast"
+                label="August plan demand"
                 value={number.format(adjustedProductionTotals.forecastPieces)}
-                note={`${scope === "premium" ? "Premium products" : "All e-commerce"} · pieces`}
+                note={`${scope === "premium" ? "Premium products" : "All e-commerce"} · ${dealReservePct}% deal reserve`}
+                tone="cream"
+              />
+              <Metric
+                label="Committed PO floor"
+                value={number.format(augustPoFloor)}
+                note="Open balance on POs expiring in August"
                 tone="cream"
               />
               <Metric
                 label="Suggested production"
                 value={number.format(adjustedProductionTotals.productionPieces)}
-                note={`${number.format(adjustedProductionTotals.productionCases)} factory cases`}
+                note={`${number.format(adjustedProductionTotals.productionCases)} cases · ${number.format(adjustedProductionTotals.criticalSkus)} critical products`}
                 tone="green"
               />
               <Metric
-                label="Products to make"
+                label="PO calculation blocked"
                 value={number.format(
-                  adjustedProductionRows.filter(
-                    (row) => row.productionPieces > 0,
-                  ).length,
+                  productionSignals.openPo.planningMonth.planCoverage
+                    .calculationBlockedPieces,
                 )}
-                note={`${adjustedProductionRows.length} products in selected scope`}
-                tone="cream"
-              />
-              <Metric
-                label="Critical cover"
-                value={number.format(adjustedProductionTotals.criticalSkus)}
-                note="Below selected safety-stock days"
-                tone={
-                  adjustedProductionTotals.criticalSkus > 0 ? "red" : "green"
-                }
+                note="Needs either a product mapping or a stock/forecast row"
+                tone="red"
               />
             </section>
 
             <section className="formula-banner production-formula">
               <span>Planning equation</span>
               <strong>
-                Production = forecast + safety − network stock − on order
+                Production = max(base + deal reserve, August POs) + safety −
+                network stock − JM on order
               </strong>
-              <small>Rounded up to the SKU case pack; no factory order is sent.</small>
+              <small>
+                POs are a floor, not added twice to the baseline. Rounded to
+                case pack; no factory order is sent.
+              </small>
             </section>
 
             <section className="panel table-panel production-table">
@@ -806,7 +900,9 @@ export function ControlTower({
                   <thead>
                     <tr>
                       <th>Product</th>
-                      <th>Forecast</th>
+                      <th>Base</th>
+                      <th>Aug PO floor</th>
+                      <th>Plan demand</th>
                       <th>Network stock</th>
                       <th>On order</th>
                       <th>Safety</th>
@@ -824,6 +920,12 @@ export function ControlTower({
                           <small className="mono">
                             {row.sapCode ?? "Mapping needed"} · {row.casePack}/case
                           </small>
+                        </td>
+                        <td>{number.format(row.baseForecastPieces)}</td>
+                        <td>
+                          {row.poFloorPieces > 0
+                            ? number.format(row.poFloorPieces)
+                            : "—"}
                         </td>
                         <td>{number.format(row.forecastPieces)}</td>
                         <td
@@ -862,6 +964,85 @@ export function ControlTower({
                   </tbody>
                 </table>
               </div>
+            </section>
+
+            <section className="production-signal-details">
+              <article className="panel po-pressure">
+                <PanelHeading
+                  eyebrow="Committed demand"
+                  title="August PO pressure by platform"
+                  action={`${number.format(productionSignals.openPo.planningMonth.poCount)} POs`}
+                />
+                <div className="po-pressure-list">
+                  {productionSignals.openPo.planningMonth.byPlatform.map(
+                    (row) => (
+                      <div key={row.platform}>
+                        <span>{row.platform}</span>
+                        <div>
+                          <i
+                            style={{
+                              width: `${Math.max(
+                                2,
+                                (row.pendingPieces / maxAugustPlatformPo) * 100,
+                              )}%`,
+                            }}
+                          />
+                        </div>
+                        <strong>{number.format(row.pendingPieces)}</strong>
+                        <small>{number.format(row.poCount)} POs</small>
+                      </div>
+                    ),
+                  )}
+                </div>
+              </article>
+              <article className="panel mapping-blockers">
+                <PanelHeading
+                  eyebrow="Mapping gate"
+                  title="PO demand excluded from calculation"
+                  action={`${number.format(productionSignals.openPo.planningMonth.planCoverage.calculationBlockedPieces)} pieces`}
+                />
+                <p>
+                  {number.format(
+                    productionSignals.openPo.planningMonth.planCoverage
+                      .mappedOutsidePlanPieces,
+                  )}{" "}
+                  pieces are mapped but missing a stock/forecast row, and{" "}
+                  {number.format(
+                    productionSignals.openPo.planningMonth.planCoverage
+                      .unmappedPieces,
+                  )}{" "}
+                  pieces have no canonical product mapping. The software will
+                  not guess either requirement.
+                </p>
+                <ol>
+                  {[
+                    ...productionSignals.openPo.planningMonth.planCoverage.mappedOutsidePlan
+                      .slice(0, 2)
+                      .map((row) => ({
+                        name: row.name,
+                        pieces: row.pendingPieces,
+                        note: "Mapped · add stock and forecast row",
+                      })),
+                    ...productionSignals.openPo.planningMonth.unmapped
+                      .slice(0, 2)
+                      .map((row) => ({
+                        name: row.skuName,
+                        pieces: row.pendingPieces,
+                        note: `${row.platform} · product mapping missing`,
+                      })),
+                  ].map((row, index) => (
+                      <li key={`${row.note}-${row.name}`}>
+                        <span>0{index + 1}</span>
+                        <div>
+                          <strong>{row.name}</strong>
+                          <small>
+                            {number.format(row.pieces)} pieces · {row.note}
+                          </small>
+                        </div>
+                      </li>
+                    ))}
+                </ol>
+              </article>
             </section>
 
             <section className="production-bottom-grid">

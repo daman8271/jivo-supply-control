@@ -3,7 +3,7 @@
   "status": "Draft",
   "planningMonth": "August 2026",
   "scope": "E-commerce",
-  "method": "50% July run-rate + 30% June + 20% May; 7 safety days; subtract live network stock and JM on-order; round to case pack",
+  "method": "Use the higher of weighted May-July base demand or mapped August open PO balance; add an explicit deal reserve; add 7 safety days; subtract live network stock and JM on-order; round to case pack",
   "defaultAssumptions": {
     "growthPct": 0,
     "safetyDays": 7,
@@ -11,12 +11,13 @@
     "monthDays": 31
   },
   "missingFactoryInputs": [
-    "Monthly production capacity by line or product family",
-    "Minimum production batch size and changeover constraints",
-    "Raw-material and packaging availability",
+    "Read-only factory and SAP access for line capacity, resource calendars and BOM plan sizes",
+    "Minimum batch and changeover rules not represented in the connected planning feeds",
+    "Run the multi-SKU raw-material and packaging feasibility check",
     "Yield, wastage and quality-hold percentages",
     "Maintenance shutdowns and factory working days",
-    "Factory submission template, approvers and due date"
+    "Official factory submission template, approvers and due date",
+    "Commercial deal pipeline with SKU volume, probability and expected PO date"
   ],
   "totals": {
     "forecastPieces": 440813,

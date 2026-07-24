@@ -1077,6 +1077,7 @@ td small {
 
 .production-actions {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 10px;
 }
@@ -1095,6 +1096,7 @@ td small {
   font-size: 9px;
   font-weight: 720;
   letter-spacing: 0.04em;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -1166,13 +1168,159 @@ td small {
   line-height: 1.1;
 }
 
+.signal-stack {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0 0 20px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.signal-stack article {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-content: start;
+  gap: 10px 12px;
+  min-width: 0;
+  padding: 16px 18px;
+}
+
+.signal-stack article + article {
+  border-left: 1px solid var(--line);
+}
+
+.signal-stack article > div {
+  display: grid;
+  gap: 5px;
+}
+
+.signal-stack article > div > span {
+  color: var(--muted);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.signal-stack article > div > strong {
+  font-size: 11px;
+}
+
+.signal-stack article > .status-pill {
+  align-self: start;
+  white-space: nowrap;
+}
+
+.signal-stack p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.5;
+}
+
 .production-formula,
 .production-table {
   margin-top: 20px;
 }
 
 .production-table table {
-  min-width: 980px;
+  min-width: 1120px;
+}
+
+.production-signal-details {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.po-pressure-list {
+  display: grid;
+  margin-top: 18px;
+}
+
+.po-pressure-list > div {
+  display: grid;
+  grid-template-columns: 112px minmax(80px, 1fr) 64px 48px;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  border-top: 1px solid var(--line);
+}
+
+.po-pressure-list span {
+  overflow: hidden;
+  font-size: 9px;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.po-pressure-list > div > div {
+  height: 5px;
+  overflow: hidden;
+  background: var(--cream);
+}
+
+.po-pressure-list i {
+  display: block;
+  height: 100%;
+  background: var(--green);
+}
+
+.po-pressure-list strong,
+.po-pressure-list small {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 8px;
+  text-align: right;
+}
+
+.po-pressure-list small {
+  color: var(--muted);
+}
+
+.mapping-blockers > p {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.mapping-blockers ol {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mapping-blockers li {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.mapping-blockers li > span {
+  color: var(--amber);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 8px;
+}
+
+.mapping-blockers li div {
+  display: grid;
+  gap: 4px;
+}
+
+.mapping-blockers li strong {
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.mapping-blockers li small {
+  color: var(--muted);
+  font-size: 8px;
 }
 
 .production-bottom-grid {
@@ -1281,6 +1429,23 @@ td small {
   .production-bottom-grid {
     grid-template-columns: 1fr;
   }
+
+  .signal-stack {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .signal-stack article:nth-child(3) {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .signal-stack article:nth-child(4) {
+    border-top: 1px solid var(--line);
+  }
+
+  .production-signal-details {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 760px) {
@@ -1367,6 +1532,24 @@ td small {
   .planning-controls > * + * {
     border-top: 1px solid var(--line);
     border-left: 0;
+  }
+
+  .signal-stack {
+    grid-template-columns: 1fr;
+  }
+
+  .signal-stack article + article,
+  .signal-stack article:nth-child(4) {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .po-pressure-list > div {
+    grid-template-columns: 94px minmax(60px, 1fr) 54px;
+  }
+
+  .po-pressure-list small {
+    display: none;
   }
 
   .factory-inputs ol {

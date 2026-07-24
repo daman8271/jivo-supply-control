@@ -91,3 +91,42 @@ test("production plan preserves the draft factory calculation", async () => {
     ),
   );
 });
+
+test("production signals preserve the live August PO floor", async () => {
+  const signals = JSON.parse(
+    await readFile(
+      new URL("../app/data/production-signals.json", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  assert.equal(signals.targets.status, "Not uploaded");
+  assert.equal(signals.openPo.current.pendingPieces, 343408);
+  assert.equal(signals.openPo.current.pendingLitres, 337951.8);
+  assert.equal(signals.openPo.current.poCount, 386);
+  assert.equal(signals.openPo.planningMonth.pendingPieces, 216596);
+  assert.equal(signals.openPo.planningMonth.poCount, 193);
+  assert.equal(signals.openPo.planningMonth.mappingGapPieces, 32096);
+  assert.equal(
+    signals.openPo.planningMonth.planCoverage.mappedOutsidePlanPieces,
+    35711,
+  );
+  assert.equal(
+    signals.openPo.planningMonth.planCoverage.calculationBlockedPieces,
+    67807,
+  );
+  assert.equal(
+    signals.openPo.planningMonth.byScope.premium +
+      signals.openPo.planningMonth.byScope.commodity +
+      signals.openPo.planningMonth.byScope.other +
+      signals.openPo.planningMonth.byScope.unmapped,
+    signals.openPo.planningMonth.pendingPieces,
+  );
+  assert.equal(signals.factoryPlanning.officialForecast.augustExists, false);
+  assert.equal(
+    signals.factoryPlanning.officialForecast.augustProductionOrders,
+    0,
+  );
+  assert.equal(signals.factoryPlanning.materials.blockers.length, 6);
+  assert.equal(signals.factoryPlanning.batchRules.configuredMoq, false);
+});

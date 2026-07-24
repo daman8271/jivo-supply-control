@@ -1,98 +1,72 @@
-# vinext-starter
+# Jivo Supply Control
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+An e-commerce supply-chain control tower for Jivo inventory, distributor stock,
+platform purchase orders, GRNs, billing reconciliation, and monthly factory
+production planning.
 
-## Prerequisites
+> **Public data notice:** this repository intentionally contains a snapshot of
+> real operational inventory, distributor, and platform-PO data. It was
+> published publicly with the business owner's explicit approval. No passwords,
+> API keys, access tokens, service credentials, or `.env` files are included.
 
-- Node.js `>=22.13.0`
+## What it does
 
-## Quick Start
+- Reconciles distributor inventory using `SOH = BAL + GRN - Billing`
+- Shows JM own inventory, commitments, availability, and critical SKUs
+- Combines Cold Press 1L and Canola 1L as one planning product
+- Uses live open platform POs as the committed August demand floor
+- Keeps uncertain deal volume as an explicit, adjustable reserve
+- Calculates case-pack-rounded production requirements
+- Surfaces unmapped PO demand and material blockers before submission
+- Exports a draft in the SAP `SalesForecast` line format
+
+The current planning snapshot is for **August 2026**, using source data reviewed
+on **24 July 2026**. It remains a draft: commercial assumptions, material
+availability, factory execution constraints, and approvers must be confirmed
+before a factory order is released.
+
+## Planning logic
+
+```text
+Selected demand = max(weighted baseline + deal reserve, mapped August open POs)
+
+Production = selected demand + safety stock
+             - network stock - JM on-order
+```
+
+The result is rounded up to the product's case pack. Platform POs are used as a
+floor, not added a second time to the baseline.
+
+## Run locally
+
+Requires Node.js `>=22.13.0`.
 
 ```bash
 npm install
 npm run dev
-npm run build
 ```
 
-This starter does not use `wrangler.jsonc`.
+Open the local address shown in the terminal.
 
-## Included Shape
+## Verify
 
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
+```bash
+npm test
+npm run lint
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+## Current limitations
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+- August platform targets and forecast upload are not yet available
+- 67,807 August PO pieces are blocked from the calculation by mapping or
+  planning-row gaps
+- Six material shortages remain after assuming current on-order quantities
+  arrive
+- Factory shifts, physical line overlap, changeovers, minimum runs, and
+  approvers still need confirmation
+- The current repository is a data snapshot; unattended CLI refresh jobs are
+  not yet included
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+## Technology
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
-
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
-
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Useful Commands
-
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+React 19, Next.js 16, vinext, Vite, and Cloudflare-compatible hosting.
