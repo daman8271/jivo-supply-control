@@ -54,16 +54,27 @@ class BuilderQualificationTests(unittest.TestCase):
         self.assertIsNone(BUILDER.explicit_integer(""))
         self.assertIsNone(BUILDER.explicit_integer(None))
         self.assertEqual(BUILDER.explicit_integer(0), 0)
+        with self.assertRaises(ValueError):
+            BUILDER.explicit_integer(2.5)
 
     def test_python_formula_subtracts_confirmed_inbound_and_hides_packless_need(self):
         self.assertEqual(
-            BUILDER.round_replenishment(101, 20, 5, True, 16),
+            BUILDER.round_replenishment(101, 20, 5, True, True, 16),
             (76, 80, "replenish", None),
         )
-        raw, recommended, status, _ = BUILDER.round_replenishment(100, 35, 0, True, None)
+        raw, recommended, status, _ = BUILDER.round_replenishment(100, 35, 0, True, True, None)
         self.assertIsNone(raw)
         self.assertIsNone(recommended)
         self.assertEqual(status, "blocked")
+
+    def test_missing_inbound_evidence_blocks_instead_of_assuming_zero(self):
+        raw, recommended, status, blocker = BUILDER.round_replenishment(
+            100, 35, None, True, False, 10
+        )
+        self.assertIsNone(raw)
+        self.assertIsNone(recommended)
+        self.assertEqual(status, "blocked")
+        self.assertIn("inbound evidence is missing", blocker.lower())
 
 
 if __name__ == "__main__":

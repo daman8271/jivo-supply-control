@@ -132,10 +132,17 @@ separate blocker rows instead of being joined by product-name similarity.
   automated release, or source-system write-back
 - The current repository uses a dated snapshot; unattended refresh jobs are not
   included
-- Distributor-SKU inbound evidence is not yet connected, so only confirmed
-  inbound can be included and the current snapshot includes zero inbound offset
+- Distributor-SKU inbound evidence is not yet connected. Unknown inbound is not
+  converted to zero; it independently blocks every exact raw need and recommendation
+  until a qualified inbound feed supplies either a confirmed quantity or an
+  explicitly evidenced zero
+- Product identity, UOM, and case-pack evidence is company/schema-qualified.
+  The Control Panel calculator export is JIVO_OIL evidence and is never applied
+  to a same-code JIVO_MART SKU
+- PO lines with blank UOM remain identity blocker rows rather than being treated
+  as pieces
 - The available distributor stock is dated 16 July 2026, eight days before the
-  PO build; it exceeds the two-day freshness gate, so all exact replenishment
+  planning cutoff; it exceeds the two-day freshness gate, so all exact replenishment
   recommendations remain blocked until fresh stock arrives
 - Knowtable and Evara opening stock remains unqualified independently of the
   freshness issue

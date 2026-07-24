@@ -6,6 +6,7 @@
  *   openPoPieces: number;
  *   usableStockPieces: number | null;
  *   confirmedInboundPieces?: number | null;
+ *   inboundQualified: boolean;
  *   casePack?: number | null;
  *   stockQualified: boolean;
  * }} input
@@ -26,6 +27,14 @@ export function calculatePoReplenishment(input) {
       recommendedPieces: null,
       status: "blocked",
       blocker: "Distributor stock is not qualified at SKU level.",
+    };
+  }
+  if (!input.inboundQualified || input.confirmedInboundPieces === null || input.confirmedInboundPieces === undefined) {
+    return {
+      rawNeedPieces: null,
+      recommendedPieces: null,
+      status: "blocked",
+      blocker: "Confirmed inbound evidence is missing; zero cannot be assumed.",
     };
   }
 

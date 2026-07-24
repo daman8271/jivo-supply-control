@@ -14,6 +14,7 @@ test("calculates PO-only replenishment with stock and case-pack rounding", () =>
       openPoPieces: 101,
       usableStockPieces: 20,
       confirmedInboundPieces: 5,
+      inboundQualified: true,
       casePack: 16,
       stockQualified: true,
     }),
@@ -43,12 +44,69 @@ test("hides exact need and blocks release when case pack is missing", () => {
   const result = calculatePoReplenishment({
     openPoPieces: 100,
     usableStockPieces: 35,
+    confirmedInboundPieces: 0,
+    inboundQualified: true,
     stockQualified: true,
   });
 
   assert.equal(result.status, "blocked");
   assert.equal(result.rawNeedPieces, null);
   assert.equal(result.recommendedPieces, null);
+});
+
+test("blocks exact need when inbound is unknown instead of assuming zero", () => {
+  const result = calculatePoReplenishment({
+    openPoPieces: 100,
+    usableStockPieces: 35,
+    confirmedInboundPieces: null,
+    inboundQualified: false,
+    casePack: 10,
+    stockQualified: true,
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.rawNeedPieces, null);
+  assert.equal(result.recommendedPieces, null);
+  assert.match(result.blocker, /inbound evidence is missing/i);
+});
+
+test("snapshot preserves company and UOM provenance and blocks blank PO UOM", () => {
+  const mappedDemand = snapshot.rows.filter(
+    (row) => row.sapCode && row.openPoPieces > 0,
+  );
+  assert.ok(mappedDemand.length > 0);
+  assert.ok(
+    mappedDemand.every(
+      (row) =>
+        row.companyCode === "JIVO_MART" &&
+        row.sapSchema === "JIVO_MART_HANADB" &&
+        row.baseUom &&
+        row.perUnit &&
+        row.planningUom,
+    ),
+  );
+
+  const missingUomPieces = snapshot.rows
+    .filter((row) => row.blocker?.includes("PO UOM is missing"))
+    .reduce((sum, row) => sum + row.openPoPieces, 0);
+  assert.equal(missingUomPieces, 13968);
+
+  const martGroundnut = snapshot.rows.filter(
+    (row) => row.sapCode === "FG0000393",
+  );
+  assert.equal(martGroundnut.length, 6);
+  assert.ok(martGroundnut.every((row) => row.casePack !== 20));
+});
+
+test("snapshot never assumes unknown inbound is zero", () => {
+  assert.ok(
+    snapshot.rows.every(
+      (row) =>
+        row.inboundQualified === false &&
+        row.confirmedInboundPieces === null &&
+        row.confirmedInboundIncludedPieces === null,
+    ),
+  );
 });
 
 test("snapshot crosses every canonical SKU with every distributor", () => {
@@ -112,6 +170,7 @@ test("any qualified recommendations reproduce the canonical formula", () => {
       openPoPieces: row.openPoPieces,
       usableStockPieces: row.usableStockPieces,
       confirmedInboundPieces: row.confirmedInboundIncludedPieces,
+      inboundQualified: row.inboundQualified,
       casePack: row.casePack,
       stockQualified: row.stockQualified,
     });
@@ -158,7 +217,9 @@ test("stale stock and unavailable source timestamps fail closed", () => {
 });
 
 test("consistent exact product mappings can qualify a missing calculator case pack", () => {
-  const row = snapshot.rows.find((item) => item.id === "chirag:FG0000230");
+  const row = snapshot.rows.find(
+    (item) => item.distributorId === "chirag" && item.sapCode === "FG0000230",
+  );
   assert.ok(row);
   assert.equal(row.casePack, 4);
   assert.equal(row.casePackSource, "Consistent exact ecom product mappings");

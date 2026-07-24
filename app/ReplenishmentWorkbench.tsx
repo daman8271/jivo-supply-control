@@ -229,6 +229,12 @@ export default function ReplenishmentWorkbench() {
                     <strong>{row.skuName}</strong>
                     <span>{row.sapCode ?? "SAP mapping missing"} · {row.distributorName}</span>
                     <small>{row.itemHead} · {row.category}</small>
+                    <small>
+                      {row.companyCode ?? "Company unresolved"} · {row.sapSchema ?? "Schema unresolved"}
+                    </small>
+                    <small>
+                      Base {row.baseUom ?? "unknown"} · per unit {row.perUnit ?? "unknown"} · PO {row.planningUom ?? "unknown"}
+                    </small>
                   </td>
                   <td>
                     <b>{number.format(row.openPoPieces)}</b>
@@ -251,14 +257,14 @@ export default function ReplenishmentWorkbench() {
                             ? `Tracker BAL ${number.format(row.trackerBalancePieces)} · ${row.stockAsOf ?? "date missing"}`
                             : "No qualified SKU stock row"}
                     </small>
-                    <small><b>Inbound</b> Not connected · 0 pieces included</small>
+                    <small><b>Inbound</b> Unknown · excluded; explicit zero evidence required</small>
                   </td>
                   <td>
                     <span>Raw need {row.rawNeedPieces === null ? "blocked" : number.format(row.rawNeedPieces)}</span>
                     <b>Replenish {row.recommendedPieces === null ? "blocked" : number.format(row.recommendedPieces)}</b>
                     <span>{row.casePack ? `Rounded to ${row.casePack}/case` : "Case pack unavailable"}</span>
                     <small>{row.casePackSource ?? "Case pack source missing"} · buffer excluded</small>
-                    <small>{row.stockQualified ? "Draft only · planner approval required" : "Evidence blocked · not release-ready"}</small>
+                    <small>{row.stockQualified && row.inboundQualified && row.casePackStatus === "qualified" ? "Draft only · planner approval required" : "Evidence blocked · not release-ready"}</small>
                   </td>
                   <td>
                     <span className={`replenishment-status ${row.status}`}>
@@ -308,6 +314,9 @@ export default function ReplenishmentWorkbench() {
             <article key={source.name}>
               <strong>{source.name}</strong>
               <span>{formatSourceAsOf(source.asOf)}</span>
+              {"companyCode" in source ? (
+                <small>{source.companyCode} · {source.sapSchema}</small>
+              ) : null}
               <small>
                 {"mode" in source
                   ? source.mode
