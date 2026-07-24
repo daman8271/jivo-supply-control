@@ -542,7 +542,13 @@ export function ControlTower({
                 </p>
               </article>
               <article
-                className={`control-summary-card ${materialBlockers.length > 0 ? "watch" : controlStageStates.approvalAndDispatch.tone}`}
+                className={`control-summary-card ${
+                  materialBlockers.length > 0
+                    ? "watch"
+                    : controlStageStates.approvalAndDispatch.tone === "healthy"
+                      ? "visible"
+                      : controlStageStates.approvalAndDispatch.tone
+                }`}
               >
                 <span>Release gate</span>
                 <strong>
@@ -553,7 +559,12 @@ export function ControlTower({
                 <p>
                   {materialBlockers.length > 0
                     ? "Material feasibility must clear before planner approval."
-                    : productionSignals.factoryPlanning.approvals.note}
+                    : controlStageStates.approvalAndDispatch.status === "Approved"
+                      ? "Explicit planner approval evidence is recorded."
+                      : controlStageStates.approvalAndDispatch.status ===
+                          "Awaiting approval"
+                        ? "Approval is configured, but approval evidence is not yet recorded."
+                        : productionSignals.factoryPlanning.approvals.note}
                 </p>
               </article>
             </section>
