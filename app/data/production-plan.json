@@ -1,0 +1,385 @@
+{
+  "generatedAt": "2026-07-24T15:45:00+05:30",
+  "status": "Draft",
+  "planningMonth": "August 2026",
+  "scope": "E-commerce",
+  "method": "50% July run-rate + 30% June + 20% May; 7 safety days; subtract live network stock and JM on-order; round to case pack",
+  "defaultAssumptions": {
+    "growthPct": 0,
+    "safetyDays": 7,
+    "julyActualDays": 24,
+    "monthDays": 31
+  },
+  "missingFactoryInputs": [
+    "Monthly production capacity by line or product family",
+    "Minimum production batch size and changeover constraints",
+    "Raw-material and packaging availability",
+    "Yield, wastage and quality-hold percentages",
+    "Maintenance shutdowns and factory working days",
+    "Factory submission template, approvers and due date"
+  ],
+  "totals": {
+    "forecastPieces": 440813,
+    "forecastLitres": 612277,
+    "networkAvailable": 203627,
+    "onOrder": 14920,
+    "productionPieces": 355628,
+    "productionCases": 25600,
+    "criticalSkus": 3
+  },
+  "rows": [
+    {
+      "name": "MUSTARD 1L",
+      "sapCode": "FG0000030",
+      "sourceSapCodes": [
+        "FG0000030"
+      ],
+      "itemHead": "COMMODITY",
+      "category": "MUSTARD",
+      "unitLitres": 1,
+      "casePack": 20,
+      "historyLitres": {
+        "may": 111558,
+        "june": 131947,
+        "julyMtd": 124351
+      },
+      "baseForecastLitres": 142206,
+      "baseForecastPieces": 142206,
+      "jmAvailable": 0,
+      "distributorProjected": -168,
+      "networkAvailable": -168,
+      "onOrder": 0,
+      "defaultSafetyPieces": 32112,
+      "suggestedProductionPieces": 174500,
+      "suggestedProductionCases": 8725,
+      "daysOfCover": 0,
+      "priority": "Critical"
+    },
+    {
+      "name": "GROUNDNUT 1L",
+      "sapCode": "FG0000142",
+      "sourceSapCodes": [
+        "FG0000142"
+      ],
+      "itemHead": "PREMIUM",
+      "category": "GROUNDNUT",
+      "unitLitres": 1,
+      "casePack": 16,
+      "historyLitres": {
+        "may": 118991,
+        "june": 123607,
+        "julyMtd": 75598
+      },
+      "baseForecastLitres": 109704,
+      "baseForecastPieces": 109704,
+      "jmAvailable": -4458,
+      "distributorProjected": 22501,
+      "networkAvailable": 18043,
+      "onOrder": 6920,
+      "defaultSafetyPieces": 24772,
+      "suggestedProductionPieces": 109520,
+      "suggestedProductionCases": 6845,
+      "daysOfCover": 5.1,
+      "priority": "Critical"
+    },
+    {
+      "name": "SUNFLOWER 1L",
+      "sapCode": "FG0000081",
+      "sourceSapCodes": [
+        "FG0000081"
+      ],
+      "itemHead": "COMMODITY",
+      "category": "SUNFLOWER",
+      "unitLitres": 1,
+      "casePack": 20,
+      "historyLitres": {
+        "may": 69064,
+        "june": 78891,
+        "julyMtd": 57855
+      },
+      "baseForecastLitres": 74845,
+      "baseForecastPieces": 74845,
+      "jmAvailable": 31530,
+      "distributorProjected": 29859,
+      "networkAvailable": 61389,
+      "onOrder": 8000,
+      "defaultSafetyPieces": 16901,
+      "suggestedProductionPieces": 22360,
+      "suggestedProductionCases": 1118,
+      "daysOfCover": 25.4,
+      "priority": "Plan"
+    },
+    {
+      "name": "GROUNDNUT 5L",
+      "sapCode": "FG0000143",
+      "sourceSapCodes": [
+        "FG0000143"
+      ],
+      "itemHead": "PREMIUM",
+      "category": "GROUNDNUT",
+      "unitLitres": 5,
+      "casePack": 4,
+      "historyLitres": {
+        "may": 59465,
+        "june": 57060,
+        "julyMtd": 43310
+      },
+      "baseForecastLitres": 56982,
+      "baseForecastPieces": 11396,
+      "jmAvailable": -448,
+      "distributorProjected": 3126,
+      "networkAvailable": 2678,
+      "onOrder": 0,
+      "defaultSafetyPieces": 2574,
+      "suggestedProductionPieces": 11292,
+      "suggestedProductionCases": 2823,
+      "daysOfCover": 7.3,
+      "priority": "Plan"
+    },
+    {
+      "name": "JIVO POMACE 1L",
+      "sapCode": "FG0000028",
+      "sourceSapCodes": [
+        "FG0000028"
+      ],
+      "itemHead": "PREMIUM",
+      "category": "OLIVE",
+      "unitLitres": 1,
+      "casePack": 16,
+      "historyLitres": {
+        "may": 56834,
+        "june": 28997,
+        "julyMtd": 24287
+      },
+      "baseForecastLitres": 35751,
+      "baseForecastPieces": 35751,
+      "jmAvailable": 23801,
+      "distributorProjected": 9662,
+      "networkAvailable": 33463,
+      "onOrder": 0,
+      "defaultSafetyPieces": 8073,
+      "suggestedProductionPieces": 10368,
+      "suggestedProductionCases": 648,
+      "daysOfCover": 29,
+      "priority": "Plan"
+    },
+    {
+      "name": "SOYABEAN 1L POUCH",
+      "sapCode": "FG0000194",
+      "sourceSapCodes": [
+        "FG0000194"
+      ],
+      "itemHead": "COMMODITY",
+      "category": "SOYABEAN",
+      "unitLitres": 1,
+      "casePack": 12,
+      "historyLitres": {
+        "may": 0,
+        "june": 0,
+        "julyMtd": 14988
+      },
+      "baseForecastLitres": 9680,
+      "baseForecastPieces": 9680,
+      "jmAvailable": 0,
+      "distributorProjected": 3139,
+      "networkAvailable": 3139,
+      "onOrder": 0,
+      "defaultSafetyPieces": 2186,
+      "suggestedProductionPieces": 8736,
+      "suggestedProductionCases": 728,
+      "daysOfCover": 10.1,
+      "priority": "Plan"
+    },
+    {
+      "name": "SUNFLOWER 5L",
+      "sapCode": "FG0000053",
+      "sourceSapCodes": [
+        "FG0000053"
+      ],
+      "itemHead": "COMMODITY",
+      "category": "SUNFLOWER",
+      "unitLitres": 5,
+      "casePack": 4,
+      "historyLitres": {
+        "may": 68120,
+        "june": 62995,
+        "julyMtd": 28045
+      },
+      "baseForecastLitres": 50635,
+      "baseForecastPieces": 10127,
+      "jmAvailable": 0,
+      "distributorProjected": 4792,
+      "networkAvailable": 4792,
+      "onOrder": 0,
+      "defaultSafetyPieces": 2287,
+      "suggestedProductionPieces": 7624,
+      "suggestedProductionCases": 1906,
+      "daysOfCover": 14.7,
+      "priority": "Plan"
+    },
+    {
+      "name": "CANOLA 5L",
+      "sapCode": "FG0000004",
+      "sourceSapCodes": [
+        "FG0000004"
+      ],
+      "itemHead": "PREMIUM",
+      "category": "CANOLA",
+      "unitLitres": 5,
+      "casePack": 4,
+      "historyLitres": {
+        "may": 67925,
+        "june": 16090,
+        "julyMtd": 19370
+      },
+      "baseForecastLitres": 30922,
+      "baseForecastPieces": 6184,
+      "jmAvailable": 0,
+      "distributorProjected": 1099,
+      "networkAvailable": 1099,
+      "onOrder": 0,
+      "defaultSafetyPieces": 1397,
+      "suggestedProductionPieces": 6484,
+      "suggestedProductionCases": 1621,
+      "daysOfCover": 5.5,
+      "priority": "Critical"
+    },
+    {
+      "name": "MUSTARD 5L",
+      "sapCode": "FG0000011",
+      "sourceSapCodes": [
+        "FG0000011"
+      ],
+      "itemHead": "COMMODITY",
+      "category": "MUSTARD",
+      "unitLitres": 5,
+      "casePack": 4,
+      "historyLitres": {
+        "may": 70515,
+        "june": 38815,
+        "julyMtd": 25870
+      },
+      "baseForecastLitres": 42455,
+      "baseForecastPieces": 8491,
+      "jmAvailable": 4682,
+      "distributorProjected": 983,
+      "networkAvailable": 5665,
+      "onOrder": 0,
+      "defaultSafetyPieces": 1918,
+      "suggestedProductionPieces": 4744,
+      "suggestedProductionCases": 1186,
+      "daysOfCover": 20.7,
+      "priority": "Plan"
+    },
+    {
+      "name": "CANOLA 1L",
+      "sapCode": "FG0000032",
+      "sourceSapCodes": [
+        "FG0000421",
+        "FG0000422",
+        "FG0000032"
+      ],
+      "itemHead": "PREMIUM",
+      "category": "CANOLA",
+      "unitLitres": 1,
+      "casePack": 24,
+      "historyLitres": {
+        "may": 35570,
+        "june": 0,
+        "julyMtd": 11967
+      },
+      "baseForecastLitres": 14843,
+      "baseForecastPieces": 14843,
+      "jmAvailable": 9839,
+      "distributorProjected": 10752,
+      "networkAvailable": 20591,
+      "onOrder": 0,
+      "defaultSafetyPieces": 3352,
+      "suggestedProductionPieces": 0,
+      "suggestedProductionCases": 0,
+      "daysOfCover": 43,
+      "priority": "Covered"
+    },
+    {
+      "name": "EXTRA LIGHT 1L",
+      "sapCode": "FG0000005",
+      "sourceSapCodes": [
+        "FG0000005"
+      ],
+      "itemHead": "PREMIUM",
+      "category": "OLIVE",
+      "unitLitres": 1,
+      "casePack": 16,
+      "historyLitres": {
+        "may": 0,
+        "june": 18196,
+        "julyMtd": 0
+      },
+      "baseForecastLitres": 10918,
+      "baseForecastPieces": 10918,
+      "jmAvailable": 34400,
+      "distributorProjected": 3613,
+      "networkAvailable": 38013,
+      "onOrder": 0,
+      "defaultSafetyPieces": 2466,
+      "suggestedProductionPieces": 0,
+      "suggestedProductionCases": 0,
+      "daysOfCover": 107.9,
+      "priority": "Covered"
+    },
+    {
+      "name": "JIVO POMACE 5L",
+      "sapCode": "FG0000008",
+      "sourceSapCodes": [
+        "FG0000008"
+      ],
+      "itemHead": "PREMIUM",
+      "category": "OLIVE",
+      "unitLitres": 5,
+      "casePack": 4,
+      "historyLitres": {
+        "may": 0,
+        "june": 31830,
+        "julyMtd": 0
+      },
+      "baseForecastLitres": 19098,
+      "baseForecastPieces": 3820,
+      "jmAvailable": 7285,
+      "distributorProjected": 2597,
+      "networkAvailable": 9882,
+      "onOrder": 0,
+      "defaultSafetyPieces": 863,
+      "suggestedProductionPieces": 0,
+      "suggestedProductionCases": 0,
+      "daysOfCover": 80.2,
+      "priority": "Covered"
+    },
+    {
+      "name": "RICE BRAN 5L",
+      "sapCode": "FG0000230",
+      "sourceSapCodes": [
+        "FG0000230"
+      ],
+      "itemHead": "COMMODITY",
+      "category": "RICE BRAN",
+      "unitLitres": 5,
+      "casePack": 4,
+      "historyLitres": {
+        "may": 35595,
+        "june": 0,
+        "julyMtd": 0
+      },
+      "baseForecastLitres": 14238,
+      "baseForecastPieces": 2848,
+      "jmAvailable": 4457,
+      "distributorProjected": 584,
+      "networkAvailable": 5041,
+      "onOrder": 0,
+      "defaultSafetyPieces": 644,
+      "suggestedProductionPieces": 0,
+      "suggestedProductionCases": 0,
+      "daysOfCover": 54.9,
+      "priority": "Covered"
+    }
+  ]
+}

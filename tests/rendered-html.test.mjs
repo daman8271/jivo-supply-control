@@ -33,6 +33,7 @@ test("server-renders the Jivo inventory control tower", async () => {
   assert.match(html, /See every litre before it gets stuck\./);
   assert.match(html, /Distributor balance/);
   assert.match(html, /JM available/);
+  assert.match(html, /Production planning/);
   assert.match(html, /SOH = BAL \+ GRN - Billing/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|taking shape/i);
 });
@@ -68,4 +69,25 @@ test("seed data preserves reconciled inventory totals", async () => {
   ]);
   assert.equal(canola.available, 9839);
   assert.equal(canola.status, "Healthy");
+});
+
+test("production plan preserves the draft factory calculation", async () => {
+  const plan = JSON.parse(
+    await readFile(
+      new URL("../app/data/production-plan.json", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  assert.equal(plan.status, "Draft");
+  assert.equal(plan.planningMonth, "August 2026");
+  assert.equal(plan.defaultAssumptions.safetyDays, 7);
+  assert.equal(plan.rows.length, 13);
+  assert.equal(plan.totals.forecastPieces, 440813);
+  assert.equal(plan.totals.productionPieces, 355628);
+  assert.ok(
+    plan.rows.every(
+      (row) => row.suggestedProductionPieces % row.casePack === 0,
+    ),
+  );
 });

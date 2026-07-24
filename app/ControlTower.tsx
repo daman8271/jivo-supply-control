@@ -3,7 +3,13 @@
 import { useMemo, useState } from "react";
 
 type Seed = typeof import("./data/seed.json");
-type View = "overview" | "inventory" | "distributors" | "readiness";
+type ProductionPlan = typeof import("./data/production-plan.json");
+type View =
+  | "overview"
+  | "inventory"
+  | "distributors"
+  | "production"
+  | "readiness";
 type Scope = "premium" | "all";
 
 const number = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
@@ -76,16 +82,102 @@ const nav: { id: View; label: string; short: string }[] = [
   { id: "overview", label: "Overview", short: "01" },
   { id: "inventory", label: "Own inventory", short: "02" },
   { id: "distributors", label: "Distributor network", short: "03" },
-  { id: "readiness", label: "Data readiness", short: "04" },
+  { id: "production", label: "Production planning", short: "04" },
+  { id: "readiness", label: "Data readiness", short: "05" },
 ];
 
-export function ControlTower({ seed }: { seed: Seed }) {
+export function ControlTower({
+  seed,
+  productionPlan,
+}: {
+  seed: Seed;
+  productionPlan: ProductionPlan;
+}) {
   const [view, setView] = useState<View>("overview");
   const [scope, setScope] = useState<Scope>("premium");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [growthPct, setGrowthPct] = useState(0);
+  const [safetyDays, setSafetyDays] = useState(
+    productionPlan.defaultAssumptions.safetyDays,
+  );
 
   const liveTotals = seed.liveReconciliation[scope];
+
+  const adjustedProductionRows = useMemo(
+    () =>
+      productionPlan.rows
+        .filter(
+          (row) =>
+            scope === "all" || row.itemHead.toUpperCase() === "PREMIUM",
+        )
+        .map((row) => {
+          const forecastPieces = Math.max(
+            0,
+            Math.round(row.baseForecastPieces * (1 + growthPct / 100)),
+          );
+          const safetyPieces = Math.ceil(
+            (forecastPieces / productionPlan.defaultAssumptions.monthDays) *
+              safetyDays,
+          );
+          const netRequirement = Math.max(
+            0,
+            forecastPieces +
+              safetyPieces -
+              row.networkAvailable -
+              row.onOrder,
+          );
+          const productionPieces =
+            Math.ceil(netRequirement / row.casePack) * row.casePack;
+          const daysOfCover =
+            forecastPieces > 0
+              ? (Math.max(0, row.networkAvailable) /
+                  forecastPieces) *
+                productionPlan.defaultAssumptions.monthDays
+              : null;
+          return {
+            ...row,
+            forecastPieces,
+            safetyPieces,
+            productionPieces,
+            productionCases: productionPieces / row.casePack,
+            daysOfCover:
+              daysOfCover === null ? null : Number(daysOfCover.toFixed(1)),
+            priority:
+              productionPieces === 0
+                ? "Covered"
+                : daysOfCover !== null && daysOfCover < safetyDays
+                  ? "Critical"
+                  : "Plan",
+          };
+        })
+        .sort(
+          (first, second) =>
+            second.productionPieces - first.productionPieces ||
+            second.forecastPieces - first.forecastPieces,
+        ),
+    [growthPct, productionPlan, safetyDays, scope],
+  );
+
+  const adjustedProductionTotals = useMemo(
+    () =>
+      adjustedProductionRows.reduce(
+        (totals, row) => {
+          totals.forecastPieces += row.forecastPieces;
+          totals.productionPieces += row.productionPieces;
+          totals.productionCases += row.productionCases;
+          if (row.priority === "Critical") totals.criticalSkus += 1;
+          return totals;
+        },
+        {
+          forecastPieces: 0,
+          productionPieces: 0,
+          productionCases: 0,
+          criticalSkus: 0,
+        },
+      ),
+    [adjustedProductionRows],
+  );
 
   const filteredInventory = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -105,6 +197,52 @@ export function ControlTower({ seed }: { seed: Seed }) {
     ),
     1,
   );
+
+  function downloadProductionCsv() {
+    const headings = [
+      "Planning Month",
+      "SKU",
+      "SAP Code",
+      "Scope",
+      "Forecast Pieces",
+      "Network Available",
+      "On Order",
+      "Safety Pieces",
+      "Production Pieces",
+      "Case Pack",
+      "Production Cases",
+      "Priority",
+    ];
+    const rows = adjustedProductionRows.map((row) => [
+      productionPlan.planningMonth,
+      row.name,
+      row.sapCode ?? "",
+      row.itemHead,
+      row.forecastPieces,
+      row.networkAvailable,
+      row.onOrder,
+      row.safetyPieces,
+      row.productionPieces,
+      row.casePack,
+      row.productionCases,
+      row.priority,
+    ]);
+    const csv = [headings, ...rows]
+      .map((row) =>
+        row
+          .map((value) => `"${String(value).replaceAll('"', '""')}"`)
+          .join(","),
+      )
+      .join("\n");
+    const url = URL.createObjectURL(
+      new Blob([csv], { type: "text/csv;charset=utf-8" }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Jivo-production-plan-${productionPlan.planningMonth.replaceAll(" ", "-")}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <main className="app-shell">
@@ -528,6 +666,257 @@ export function ControlTower({ seed }: { seed: Seed }) {
                   </tbody>
                 </table>
               </div>
+            </section>
+          </div>
+        )}
+
+        {view === "production" && (
+          <div className="page production-page">
+            <PageHeading
+              eyebrow="Factory planning"
+              title={`${productionPlan.planningMonth} production draft`}
+              description="A factory-ready monthly requirement built from recent e-commerce movement, live network stock and JM on-order quantities."
+            />
+
+            <section className="production-command">
+              <div>
+                <span className="status-pill partial">{productionPlan.status}</span>
+                <strong>Scenario controls</strong>
+                <p>
+                  Adjust the demand uplift and safety cover. The requirement
+                  recalculates instantly and stays rounded to case packs.
+                </p>
+              </div>
+              <div className="production-actions">
+                <div className="scope-control" aria-label="Production scope">
+                  <button
+                    className={scope === "premium" ? "selected" : ""}
+                    onClick={() => setScope("premium")}
+                    type="button"
+                  >
+                    Premium only
+                  </button>
+                  <button
+                    className={scope === "all" ? "selected" : ""}
+                    onClick={() => setScope("all")}
+                    type="button"
+                  >
+                    All e-commerce
+                  </button>
+                </div>
+                <button
+                  className="export-button"
+                  onClick={downloadProductionCsv}
+                  type="button"
+                >
+                  Export factory CSV
+                </button>
+              </div>
+            </section>
+
+            <section className="planning-controls">
+              <label>
+                <span>
+                  Demand adjustment
+                  <strong>{growthPct > 0 ? `+${growthPct}` : growthPct}%</strong>
+                </span>
+                <input
+                  aria-label="Demand adjustment percentage"
+                  max="30"
+                  min="-10"
+                  onChange={(event) => setGrowthPct(Number(event.target.value))}
+                  step="5"
+                  type="range"
+                  value={growthPct}
+                />
+                <small>Use for promotions, launches or a cautious forecast.</small>
+              </label>
+              <label>
+                <span>
+                  Safety stock
+                  <strong>{safetyDays} days</strong>
+                </span>
+                <input
+                  aria-label="Safety stock days"
+                  max="15"
+                  min="0"
+                  onChange={(event) => setSafetyDays(Number(event.target.value))}
+                  step="1"
+                  type="range"
+                  value={safetyDays}
+                />
+                <small>Extra cover held after August forecast demand.</small>
+              </label>
+              <div className="planning-method">
+                <span>Forecast method</span>
+                <strong>May–July weighted run-rate</strong>
+                <small>50% July · 30% June · 20% May</small>
+              </div>
+            </section>
+
+            <section className="kpi-grid" aria-label="Production plan metrics">
+              <Metric
+                label="August forecast"
+                value={number.format(adjustedProductionTotals.forecastPieces)}
+                note={`${scope === "premium" ? "Premium products" : "All e-commerce"} · pieces`}
+                tone="cream"
+              />
+              <Metric
+                label="Suggested production"
+                value={number.format(adjustedProductionTotals.productionPieces)}
+                note={`${number.format(adjustedProductionTotals.productionCases)} factory cases`}
+                tone="green"
+              />
+              <Metric
+                label="Products to make"
+                value={number.format(
+                  adjustedProductionRows.filter(
+                    (row) => row.productionPieces > 0,
+                  ).length,
+                )}
+                note={`${adjustedProductionRows.length} products in selected scope`}
+                tone="cream"
+              />
+              <Metric
+                label="Critical cover"
+                value={number.format(adjustedProductionTotals.criticalSkus)}
+                note="Below selected safety-stock days"
+                tone={
+                  adjustedProductionTotals.criticalSkus > 0 ? "red" : "green"
+                }
+              />
+            </section>
+
+            <section className="formula-banner production-formula">
+              <span>Planning equation</span>
+              <strong>
+                Production = forecast + safety − network stock − on order
+              </strong>
+              <small>Rounded up to the SKU case pack; no factory order is sent.</small>
+            </section>
+
+            <section className="panel table-panel production-table">
+              <PanelHeading
+                eyebrow="Factory submission lines"
+                title={`${scope === "premium" ? "Premium" : "All"} requirement`}
+                action={`${productionPlan.planningMonth} · Draft`}
+              />
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Product</th>
+                      <th>Forecast</th>
+                      <th>Network stock</th>
+                      <th>On order</th>
+                      <th>Safety</th>
+                      <th>Make</th>
+                      <th>Cases</th>
+                      <th>Cover</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {adjustedProductionRows.map((row) => (
+                      <tr key={row.name}>
+                        <td>
+                          <strong>{row.name}</strong>
+                          <small className="mono">
+                            {row.sapCode ?? "Mapping needed"} · {row.casePack}/case
+                          </small>
+                        </td>
+                        <td>{number.format(row.forecastPieces)}</td>
+                        <td
+                          className={
+                            row.networkAvailable < 0 ? "negative-text" : ""
+                          }
+                        >
+                          {number.format(row.networkAvailable)}
+                        </td>
+                        <td>{number.format(row.onOrder)}</td>
+                        <td>{number.format(row.safetyPieces)}</td>
+                        <td>
+                          <strong>{number.format(row.productionPieces)}</strong>
+                        </td>
+                        <td>{number.format(row.productionCases)}</td>
+                        <td>
+                          {row.daysOfCover === null
+                            ? "—"
+                            : `${decimal.format(row.daysOfCover)}d`}
+                        </td>
+                        <td>
+                          <span
+                            className={`status-pill ${
+                              row.priority === "Critical"
+                                ? "need"
+                                : row.priority === "Covered"
+                                  ? "have"
+                                  : "partial"
+                            }`}
+                          >
+                            {row.priority}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section className="production-bottom-grid">
+              <article className="panel factory-inputs">
+                <PanelHeading
+                  eyebrow="Before submission"
+                  title="Factory inputs still needed"
+                  action={`${productionPlan.missingFactoryInputs.length} items`}
+                />
+                <ol>
+                  {productionPlan.missingFactoryInputs.map((item, index) => (
+                    <li key={item}>
+                      <span>0{index + 1}</span>
+                      <p>{item}</p>
+                    </li>
+                  ))}
+                </ol>
+              </article>
+              <article className="panel approval-route">
+                <PanelHeading
+                  eyebrow="Approval route"
+                  title="Draft to factory"
+                  action="No submission yet"
+                />
+                <ol>
+                  <li className="complete">
+                    <span>01</span>
+                    <div>
+                      <strong>System draft</strong>
+                      <p>Inventory and demand calculation complete.</p>
+                    </div>
+                  </li>
+                  <li>
+                    <span>02</span>
+                    <div>
+                      <strong>Commercial review</strong>
+                      <p>Promotions, launches and targets confirmed.</p>
+                    </div>
+                  </li>
+                  <li>
+                    <span>03</span>
+                    <div>
+                      <strong>Factory feasibility</strong>
+                      <p>Capacity, batches and materials validated.</p>
+                    </div>
+                  </li>
+                  <li>
+                    <span>04</span>
+                    <div>
+                      <strong>Approved submission</strong>
+                      <p>Locked version exported and acknowledged.</p>
+                    </div>
+                  </li>
+                </ol>
+              </article>
             </section>
           </div>
         )}

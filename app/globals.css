@@ -1048,6 +1048,202 @@ td small {
   line-height: 1.5;
 }
 
+.production-command {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 20px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.production-command > div:first-child {
+  max-width: 560px;
+}
+
+.production-command > div:first-child > strong {
+  display: block;
+  margin-top: 12px;
+  font-size: 16px;
+}
+
+.production-command p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.production-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.production-actions .scope-control {
+  margin: 0;
+}
+
+.export-button {
+  min-height: 37px;
+  padding: 0 14px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 720;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.export-button:hover {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.planning-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr 0.9fr;
+  margin: 20px 0;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.planning-controls > * {
+  min-width: 0;
+  padding: 18px 20px;
+}
+
+.planning-controls > * + * {
+  border-left: 1px solid var(--line);
+}
+
+.planning-controls label {
+  display: grid;
+  gap: 10px;
+}
+
+.planning-controls label > span,
+.planning-method > span {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.planning-controls label > span strong {
+  color: var(--ink);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+}
+
+.planning-controls input[type="range"] {
+  width: 100%;
+  accent-color: var(--green);
+}
+
+.planning-controls small,
+.planning-method small {
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.planning-method {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+}
+
+.planning-method strong {
+  font-family: var(--font-serif), serif;
+  font-size: 17px;
+  line-height: 1.1;
+}
+
+.production-formula,
+.production-table {
+  margin-top: 20px;
+}
+
+.production-table table {
+  min-width: 980px;
+}
+
+.production-bottom-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.factory-inputs ol,
+.approval-route ol {
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.factory-inputs ol {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.factory-inputs li {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 8px;
+  min-height: 54px;
+  padding: 12px 14px 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.factory-inputs li:nth-child(even) {
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
+}
+
+.factory-inputs li > span,
+.approval-route li > span {
+  color: var(--amber);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+}
+
+.factory-inputs p {
+  margin: 0;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.approval-route li {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.approval-route li.complete {
+  color: var(--green);
+}
+
+.approval-route strong {
+  font-size: 10px;
+}
+
+.approval-route p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
 @media (max-width: 1120px) {
   .app-shell {
     grid-template-columns: 210px minmax(0, 1fr);
@@ -1075,6 +1271,15 @@ td small {
   .build-sequence li:nth-child(3) {
     padding-left: 0;
     border-left: 0;
+  }
+
+  .production-command {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .production-bottom-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1139,6 +1344,38 @@ td small {
   .scope-control {
     width: max-content;
     margin-top: 24px;
+  }
+
+  .production-actions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .production-actions .scope-control {
+    width: 100%;
+  }
+
+  .production-actions .scope-control button {
+    flex: 1;
+  }
+
+  .planning-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .planning-controls > * + * {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .factory-inputs ol {
+    grid-template-columns: 1fr;
+  }
+
+  .factory-inputs li:nth-child(even) {
+    padding-left: 0;
+    border-left: 0;
   }
 
   .kpi-grid,
