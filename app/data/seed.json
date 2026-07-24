@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-24T14:00:00+05:30",
+  "generatedAt": "2026-07-24T15:30:00+05:30",
   "formula": {
     "stated": "SOH = BAL + GRN - Billing",
     "equivalent": "BAL = SOH + Billing - GRN"
@@ -7,9 +7,9 @@
   "sourceStatus": [
     {
       "id": "distributor",
-      "name": "Distributor stock",
+      "name": "Distributor opening",
       "state": "Imported",
-      "detail": "16 Jul opening / working report"
+      "detail": "16 Jul opening balance; Knowtable and Evara need physical SOH"
     },
     {
       "id": "jm",
@@ -18,10 +18,16 @@
       "detail": "24 Jul 2026, 13:46"
     },
     {
+      "id": "billing",
+      "name": "SAP distributor billing",
+      "state": "Imported",
+      "detail": "Live ecom CLI · invoice movements through 24 Jul"
+    },
+    {
       "id": "grn",
       "name": "Platform PO + GRN",
-      "state": "Mapped",
-      "detail": "Google Sheet connector; live sync pending"
+      "state": "Imported",
+      "detail": "Live ecom master PO · accepted quantities through 24 Jul"
     }
   ],
   "distributorSummary": [
@@ -45,7 +51,22 @@
       "negativeSkuCount": 3,
       "activeSkuCount": 33,
       "premiumSkuCount": 23,
-      "openingMissing": false
+      "openingMissing": false,
+      "live": {
+        "leadTimeDays": null,
+        "all": {
+          "opening": 19835,
+          "billing": 29799,
+          "grn": 26241,
+          "projected": 23393
+        },
+        "premium": {
+          "opening": 10302,
+          "billing": 16759,
+          "grn": 13195,
+          "projected": 13866
+        }
+      }
     },
     {
       "id": "knowtable",
@@ -67,7 +88,22 @@
       "negativeSkuCount": 19,
       "activeSkuCount": 26,
       "premiumSkuCount": 18,
-      "openingMissing": true
+      "openingMissing": true,
+      "live": {
+        "leadTimeDays": 7,
+        "all": {
+          "opening": -21716,
+          "billing": 45455,
+          "grn": 24803,
+          "projected": -1064
+        },
+        "premium": {
+          "opening": -28805,
+          "billing": 17020,
+          "grn": 10400,
+          "projected": -22185
+        }
+      }
     },
     {
       "id": "antize",
@@ -89,7 +125,22 @@
       "negativeSkuCount": 0,
       "activeSkuCount": 15,
       "premiumSkuCount": 12,
-      "openingMissing": false
+      "openingMissing": false,
+      "live": {
+        "leadTimeDays": 2,
+        "all": {
+          "opening": 53197,
+          "billing": 15092,
+          "grn": 23162,
+          "projected": 45127
+        },
+        "premium": {
+          "opening": 37755,
+          "billing": 14872,
+          "grn": 20698,
+          "projected": 31929
+        }
+      }
     },
     {
       "id": "baba",
@@ -111,7 +162,22 @@
       "negativeSkuCount": 1,
       "activeSkuCount": 26,
       "premiumSkuCount": 16,
-      "openingMissing": false
+      "openingMissing": false,
+      "live": {
+        "leadTimeDays": null,
+        "all": {
+          "opening": 28356,
+          "billing": 17246,
+          "grn": 12774,
+          "projected": 32828
+        },
+        "premium": {
+          "opening": 10127,
+          "billing": 4601,
+          "grn": 2598,
+          "projected": 12130
+        }
+      }
     },
     {
       "id": "sustainquest",
@@ -133,7 +199,22 @@
       "negativeSkuCount": 3,
       "activeSkuCount": 33,
       "premiumSkuCount": 21,
-      "openingMissing": false
+      "openingMissing": false,
+      "live": {
+        "leadTimeDays": null,
+        "all": {
+          "opening": 43236,
+          "billing": 30993,
+          "grn": 19187,
+          "projected": 55042
+        },
+        "premium": {
+          "opening": 29134,
+          "billing": 10985,
+          "grn": 5943,
+          "projected": 34176
+        }
+      }
     },
     {
       "id": "evara",
@@ -155,7 +236,22 @@
       "negativeSkuCount": 5,
       "activeSkuCount": 18,
       "premiumSkuCount": 12,
-      "openingMissing": true
+      "openingMissing": true,
+      "live": {
+        "leadTimeDays": null,
+        "all": {
+          "opening": 11470,
+          "billing": 27920,
+          "grn": 22168,
+          "projected": 17222
+        },
+        "premium": {
+          "opening": 5229,
+          "billing": 3200,
+          "grn": 3520,
+          "projected": 4909
+        }
+      }
     }
   ],
   "distributorExceptions": [
@@ -969,5 +1065,23 @@
     "stockValue": 66711385,
     "criticalSkus": 4,
     "unmappedSkus": 6
+  },
+  "liveReconciliation": {
+    "from": "2026-07-16",
+    "to": "2026-07-24",
+    "label": "16–24 Jul 2026",
+    "formula": "Projected = 16 Jul opening + SAP billing − platform GRN",
+    "all": {
+      "opening": 134378,
+      "billing": 166505,
+      "grn": 128335,
+      "projected": 172548
+    },
+    "premium": {
+      "opening": 63742,
+      "billing": 67437,
+      "grn": 56354,
+      "projected": 74825
+    }
   }
 }

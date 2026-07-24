@@ -48,4 +48,14 @@ test("seed data preserves reconciled inventory totals", async () => {
   assert.equal(seed.jmTotals.criticalSkus, 4);
   assert.equal(seed.distributorSummary.length, 6);
   assert.equal(seed.formula.equivalent, "BAL = SOH + Billing - GRN");
+  assert.equal(seed.liveReconciliation.all.opening, 134378);
+  assert.equal(seed.liveReconciliation.all.billing, 166505);
+  assert.equal(seed.liveReconciliation.all.grn, 128335);
+  assert.equal(seed.liveReconciliation.all.projected, 172548);
+  assert.equal(
+    seed.liveReconciliation.all.projected,
+    seed.liveReconciliation.all.opening +
+      seed.liveReconciliation.all.billing -
+      seed.liveReconciliation.all.grn,
+  );
 });

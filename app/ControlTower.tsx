@@ -36,9 +36,9 @@ const requirements = [
   },
   {
     group: "Billing movements",
-    status: "Partial",
-    have: "Aggregated quantity plus mapped ecom CLI sales-invoice endpoints",
-    need: "Re-authenticate the CLI, then import invoice date, SAP SKU, quantity, source and destination",
+    status: "Have",
+    have: "Live SAP invoice movements by date, distributor, SAP SKU and pieces",
+    need: "Unattended service credential and an agreed sales-return treatment",
   },
   {
     group: "GRN movements",
@@ -85,21 +85,7 @@ export function ControlTower({ seed }: { seed: Seed }) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
-  const distributorTotals = useMemo(
-    () =>
-      seed.distributorSummary.reduce(
-        (totals, distributor) => {
-          const values = distributor[scope];
-          totals.soh += values.soh;
-          totals.billing += values.billing;
-          totals.grn += values.grn;
-          totals.balance += values.balance;
-          return totals;
-        },
-        { soh: 0, billing: 0, grn: 0, balance: 0 },
-      ),
-    [scope, seed.distributorSummary],
-  );
+  const liveTotals = seed.liveReconciliation[scope];
 
   const filteredInventory = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -114,7 +100,9 @@ export function ControlTower({ seed }: { seed: Seed }) {
   }, [query, seed.jmInventory, statusFilter]);
 
   const maxDistributorBalance = Math.max(
-    ...seed.distributorSummary.map((row) => Math.max(0, row[scope].balance)),
+    ...seed.distributorSummary.map((row) =>
+      Math.max(0, row.live[scope].projected),
+    ),
     1,
   );
 
@@ -159,10 +147,10 @@ export function ControlTower({ seed }: { seed: Seed }) {
         <header className="topbar">
           <div className="topbar-date">
             <span>Snapshot</span>
-            <strong>24 July 2026 · 14:00 IST</strong>
+            <strong>24 July 2026 · 15:30 IST</strong>
           </div>
           <div className="topbar-actions">
-            <span className="source-count">3 sources</span>
+            <span className="source-count">{seed.sourceStatus.length} sources</span>
             <button type="button" onClick={() => setView("readiness")}>
               Data checklist
             </button>
@@ -206,10 +194,10 @@ export function ControlTower({ seed }: { seed: Seed }) {
                 tone="green"
               />
               <Metric
-                label="Distributor BAL"
-                value={number.format(distributorTotals.balance)}
-                note={`${number.format(distributorTotals.soh)} SOH · ${scope === "premium" ? "premium scope" : "all products"}`}
-                tone={distributorTotals.balance < 0 ? "red" : "cream"}
+                label="Projected distributor stock"
+                value={number.format(liveTotals.projected)}
+                note={`${number.format(liveTotals.opening)} opening · live through 24 Jul`}
+                tone={liveTotals.projected < 0 ? "red" : "cream"}
               />
               <Metric
                 label="JM committed"
@@ -236,7 +224,7 @@ export function ControlTower({ seed }: { seed: Seed }) {
                 />
                 <div className="distributor-bars">
                   {seed.distributorSummary.map((distributor) => {
-                    const value = distributor[scope].balance;
+                    const value = distributor.live[scope].projected;
                     const width = `${Math.max(
                       3,
                       (Math.max(0, value) / maxDistributorBalance) * 100,
@@ -266,8 +254,8 @@ export function ControlTower({ seed }: { seed: Seed }) {
                   })}
                 </div>
                 <div className="formula-note">
-                  <span>Reconciliation rule</span>
-                  <strong>{seed.formula.stated}</strong>
+                  <span>{seed.liveReconciliation.label}</span>
+                  <strong>{seed.liveReconciliation.formula}</strong>
                 </div>
               </article>
 
@@ -433,13 +421,16 @@ export function ControlTower({ seed }: { seed: Seed }) {
           <div className="page">
             <PageHeading
               eyebrow="Distributor network"
-              title="Stock movement reconciliation"
-              description="A read-only view of SOH, billing, GRN and calculated balance for every distributor."
+              title="Live stock projection"
+              description="The 16 July opening carried forward with live SAP billing and platform-accepted quantities."
             />
             <section className="formula-banner">
-              <span>Confirmed equation</span>
-              <strong>{seed.formula.stated}</strong>
-              <small>Equivalent: {seed.formula.equivalent}</small>
+              <span>{seed.liveReconciliation.label}</span>
+              <strong>{seed.liveReconciliation.formula}</strong>
+              <small>
+                Excludes unreported in-transit stock and manual adjustments;
+                Knowtable and Evara still need physical opening confirmation.
+              </small>
             </section>
             <section className="distributor-card-grid">
               {seed.distributorSummary.map((distributor) => (
@@ -453,33 +444,39 @@ export function ControlTower({ seed }: { seed: Seed }) {
                       className={
                         distributor.openingMissing
                           ? "status-pill need"
-                          : "status-pill have"
+                          : distributor.live.leadTimeDays
+                            ? "status-pill have"
+                            : "status-pill partial"
                       }
                     >
-                      {distributor.openingMissing ? "SOH missing" : "SOH loaded"}
+                      {distributor.openingMissing
+                        ? "Opening missing"
+                        : distributor.live.leadTimeDays
+                          ? `${distributor.live.leadTimeDays}d transit`
+                          : "Lead time needed"}
                     </span>
                   </div>
                   <div className="network-metrics">
                     <span>
-                      <small>SOH</small>
-                      <strong>{number.format(distributor.all.soh)}</strong>
+                      <small>16 Jul opening</small>
+                      <strong>{number.format(distributor.live.all.opening)}</strong>
                     </span>
                     <span>
-                      <small>Billing</small>
-                      <strong>{number.format(distributor.all.billing)}</strong>
+                      <small>SAP billing</small>
+                      <strong>{number.format(distributor.live.all.billing)}</strong>
                     </span>
                     <span>
-                      <small>GRN</small>
-                      <strong>{number.format(distributor.all.grn)}</strong>
+                      <small>Platform GRN</small>
+                      <strong>{number.format(distributor.live.all.grn)}</strong>
                     </span>
                     <span>
-                      <small>BAL</small>
+                      <small>24 Jul projected</small>
                       <strong
                         className={
-                          distributor.all.balance < 0 ? "negative-text" : ""
+                          distributor.live.all.projected < 0 ? "negative-text" : ""
                         }
                       >
-                        {number.format(distributor.all.balance)}
+                        {number.format(distributor.live.all.projected)}
                       </strong>
                     </span>
                   </div>
@@ -492,8 +489,8 @@ export function ControlTower({ seed }: { seed: Seed }) {
             </section>
             <section className="panel table-panel">
               <PanelHeading
-                eyebrow="Exceptions"
-                title="Negative distributor balances"
+                eyebrow="Opening exceptions"
+                title="Negative 16 July balances"
                 action={`${seed.distributorExceptions.length} rows`}
               />
               <div className="table-scroll">
@@ -545,14 +542,14 @@ export function ControlTower({ seed }: { seed: Seed }) {
             <section className="readiness-summary">
               <div>
                 <span>Current readiness</span>
-                <strong>4 core sources mapped</strong>
+                <strong>4 core sources live</strong>
                 <p>
-                  Distributor inventory, JM inventory, platform PO/GRN and the
-                  ecom billing route are mapped for the read-only control tower.
+                  Distributor opening, JM inventory, SAP billing and platform
+                  PO/GRN are now joined in the read-only control tower.
                 </p>
               </div>
-              <div className="readiness-score" aria-label="Data readiness 50 percent">
-                <strong>50%</strong>
+              <div className="readiness-score" aria-label="Data readiness 56 percent">
+                <strong>56%</strong>
                 <span>ready for automation</span>
               </div>
             </section>
