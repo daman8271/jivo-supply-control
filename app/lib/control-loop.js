@@ -7,24 +7,31 @@ const HEALTHY = { status: "Ready", tone: "healthy" };
  *
  * @param {{
  *   demandPieces: number;
- *   targetsStatus: string;
+ *   targetsStatus?: string | null;
  *   openPoPieces: number;
  *   blockedPoPieces: number;
  *   networkProjectedUnits: number;
  *   missingDistributorOpenings: number;
  *   criticalInventorySkus: number;
  *   productionPieces: number;
- *   productionStatus: string;
+ *   productionStatus?: string | null;
  *   materialBlockerCount: number;
  *   productionOrderCount: number;
  *   approvalConfigured: boolean;
+ *   approvalState?: string | null;
  * }} input
  */
 export function deriveControlStageStates(input) {
+  const targetsStatus = String(input.targetsStatus ?? "").toLowerCase();
+  const normalizedProductionStatus = String(
+    input.productionStatus ?? "Draft",
+  ).toLowerCase();
+  const approvalState = String(input.approvalState ?? "pending").toLowerCase();
+
   const demand =
     input.demandPieces <= 0
       ? { status: "Blocked", tone: "blocked" }
-      : input.targetsStatus.toLowerCase() !== "qualified"
+      : targetsStatus !== "qualified"
         ? { status: "Input needed", tone: "watch" }
         : HEALTHY;
 
@@ -42,7 +49,6 @@ export function deriveControlStageStates(input) {
         ? { status: "Watch", tone: "watch" }
         : HEALTHY;
 
-  const normalizedProductionStatus = input.productionStatus.toLowerCase();
   const production =
     input.productionPieces <= 0
       ? { status: "Covered", tone: "healthy" }
@@ -61,11 +67,13 @@ export function deriveControlStageStates(input) {
   const approvalAndDispatch =
     input.productionPieces <= 0
       ? { status: "Not required", tone: "healthy" }
-      : !input.approvalConfigured
-        ? { status: "Manual gate", tone: "blocked" }
-        : input.productionOrderCount > 0
-          ? { status: "In execution", tone: "draft" }
-          : { status: "Approved", tone: "watch" };
+      : approvalState === "released" && input.productionOrderCount > 0
+        ? { status: "In execution", tone: "draft" }
+        : approvalState === "approved" || approvalState === "released"
+          ? { status: "Approved", tone: "healthy" }
+          : !input.approvalConfigured
+            ? { status: "Manual gate", tone: "blocked" }
+            : { status: "Awaiting approval", tone: "watch" };
 
   return {
     demand,
@@ -75,4 +83,27 @@ export function deriveControlStageStates(input) {
     materials,
     approvalAndDispatch,
   };
+}
+
+/**
+ * Return only unresolved, planner-owned actions for the current snapshot.
+ *
+ * @param {{
+ *   blockedPoPieces: number;
+ *   materialBlockerCount: number;
+ *   missingDistributorOpenings: number;
+ *   criticalInventorySkus: number;
+ *   targetsStatus?: string | null;
+ * }} input
+ */
+export function deriveActiveControlActions(input) {
+  const actions = [];
+  if (input.blockedPoPieces > 0) actions.push("unblock-pos");
+  if (input.materialBlockerCount > 0) actions.push("resolve-materials");
+  if (input.missingDistributorOpenings > 0) actions.push("confirm-openings");
+  if (input.criticalInventorySkus > 0) actions.push("critical-inventory");
+  if (String(input.targetsStatus ?? "").toLowerCase() !== "qualified") {
+    actions.push("upload-targets");
+  }
+  return actions;
 }

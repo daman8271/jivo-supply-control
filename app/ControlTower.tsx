@@ -2,7 +2,10 @@
 
 import { useMemo, useState } from "react";
 
-import { deriveControlStageStates } from "./lib/control-loop";
+import {
+  deriveActiveControlActions,
+  deriveControlStageStates,
+} from "./lib/control-loop";
 
 type Seed = typeof import("./data/seed.json");
 type ProductionPlan = typeof import("./data/production-plan.json");
@@ -265,6 +268,15 @@ export function ControlTower({
       productionSignals.factoryPlanning.officialForecast.augustProductionOrders,
     approvalConfigured:
       productionSignals.factoryPlanning.approvals.sapApprovalConfigured,
+    approvalState: null,
+  });
+  const activeControlActionIds = deriveActiveControlActions({
+    blockedPoPieces:
+      productionSignals.openPo.planningMonth.planCoverage.calculationBlockedPieces,
+    materialBlockerCount: materialBlockers.length,
+    missingDistributorOpenings,
+    criticalInventorySkus: seed.jmTotals.criticalSkus,
+    targetsStatus: productionSignals.targets.status,
   });
   const controlStages: {
     name: string;
@@ -330,42 +342,49 @@ export function ControlTower({
     },
   ];
   const controlActions: {
+    id: string;
     title: string;
     owner: string;
     consequence: string;
     target: View;
   }[] = [
     {
+      id: "unblock-pos",
       title: `Unblock ${number.format(productionSignals.openPo.planningMonth.planCoverage.calculationBlockedPieces)} PO pieces`,
       owner: "Demand planning + e-commerce ops",
       consequence: "Committed platform demand is excluded from the production calculation.",
       target: "production",
     },
     {
+      id: "resolve-materials",
       title: `Resolve ${materialBlockers.length} material blockers`,
       owner: "Procurement + factory planning",
       consequence: "The draft production requirement cannot be released as planned.",
       target: "production",
     },
     {
+      id: "confirm-openings",
       title: `Confirm ${missingDistributorOpenings} missing distributor openings`,
       owner: "Distributor operations",
       consequence: "Network coverage and replenishment decisions remain unreliable.",
       target: "distributors",
     },
     {
+      id: "critical-inventory",
       title: `Address ${seed.jmTotals.criticalSkus} critical JM SKUs`,
       owner: "Inventory planning",
       consequence: "Low or negative availability can put platform PO fulfilment at risk.",
       target: "inventory",
     },
     {
+      id: "upload-targets",
       title: "Upload August targets",
       owner: "Commercial planning",
       consequence: "The draft has no official primary or secondary demand benchmark.",
       target: "production",
     },
-  ];
+  ].filter((action) => activeControlActionIds.includes(action.id));
+  const nextControlAction = controlActions[0];
 
   function downloadProductionCsv() {
     const headings = [
@@ -463,23 +482,20 @@ export function ControlTower({
                 <span className="eyebrow">End-to-end command view</span>
                 <h1 id="control-title">Control the chain, not just the stock.</h1>
                 <p>
-                  The network has qualified stock signals, but the August release
-                  path is blocked by demand coverage, materials and approval gaps.
-                  Start with the first action below, then follow the chain
-                  downstream.
+                  {nextControlAction
+                    ? `The current snapshot has ${controlActions.length} unresolved chain ${controlActions.length === 1 ? "action" : "actions"}. Start with the first priority below, then follow the impact downstream.`
+                    : "Every qualified signal in the current snapshot is clear. Continue monitoring source freshness and review new exceptions as they arrive."}
                 </p>
               </div>
               <div className="control-verdict" aria-label="Current chain verdict">
-                <span>Next action</span>
-                <strong>
-                  Unblock {number.format(
-                    productionSignals.openPo.planningMonth.planCoverage
-                      .calculationBlockedPieces,
-                  )}{" "}
-                  PO pieces
-                </strong>
-                <button type="button" onClick={() => setView("production")}>
-                  Open production detail <span aria-hidden="true">→</span>
+                <span>{nextControlAction ? "Next action" : "Chain status"}</span>
+                <strong>{nextControlAction?.title ?? "No blocking action"}</strong>
+                <button
+                  type="button"
+                  onClick={() => setView(nextControlAction?.target ?? "overview")}
+                >
+                  {nextControlAction ? "Open detail" : "Review overview"}{" "}
+                  <span aria-hidden="true">→</span>
                 </button>
               </div>
             </section>
@@ -496,21 +512,49 @@ export function ControlTower({
                   {missingDistributorOpenings} openings remain unconfirmed.
                 </p>
               </article>
-              <article className="control-summary-card blocked">
-                <span>Blocked now</span>
+              <article
+                className={`control-summary-card ${productionSignals.openPo.planningMonth.planCoverage.calculationBlockedPieces > 0 ? "blocked" : "visible"}`}
+              >
+                <span>
+                  {productionSignals.openPo.planningMonth.planCoverage
+                    .calculationBlockedPieces > 0
+                    ? "Blocked now"
+                    : "PO demand mapped"}
+                </span>
                 <strong>
                   {number.format(
                     productionSignals.openPo.planningMonth.planCoverage
-                      .calculationBlockedPieces,
+                      .calculationBlockedPieces > 0
+                      ? productionSignals.openPo.planningMonth.planCoverage
+                          .calculationBlockedPieces
+                      : productionSignals.openPo.planningMonth.pendingPieces,
                   )}{" "}
-                  PO pieces
+                  {productionSignals.openPo.planningMonth.planCoverage
+                    .calculationBlockedPieces > 0
+                    ? "PO pieces blocked"
+                    : "open PO pieces"}
                 </strong>
-                <p>Unmapped demand and missing plan rows understate the draft.</p>
+                <p>
+                  {productionSignals.openPo.planningMonth.planCoverage
+                    .calculationBlockedPieces > 0
+                    ? "Unmapped demand and missing plan rows understate the draft."
+                    : "Every open PO line is represented in the current demand calculation."}
+                </p>
               </article>
-              <article className="control-summary-card watch">
+              <article
+                className={`control-summary-card ${materialBlockers.length > 0 ? "watch" : controlStageStates.approvalAndDispatch.tone}`}
+              >
                 <span>Release gate</span>
-                <strong>{materialBlockers.length} material shortages</strong>
-                <p>No active SAP approval template covers the release.</p>
+                <strong>
+                  {materialBlockers.length > 0
+                    ? `${materialBlockers.length} material shortages`
+                    : controlStageStates.approvalAndDispatch.status}
+                </strong>
+                <p>
+                  {materialBlockers.length > 0
+                    ? "Material feasibility must clear before planner approval."
+                    : productionSignals.factoryPlanning.approvals.note}
+                </p>
               </article>
             </section>
 
@@ -554,8 +598,13 @@ export function ControlTower({
                 <small>{controlActions.length} planner-owned actions</small>
               </header>
               <ol className="control-action-list">
+                {controlActions.length === 0 && (
+                  <li className="control-action-empty">
+                    No unresolved planner-owned actions in this snapshot.
+                  </li>
+                )}
                 {controlActions.map((action, index) => (
-                  <li key={action.title}>
+                  <li key={action.id}>
                     <button onClick={() => setView(action.target)} type="button">
                       <span className="action-rank">
                         P{String(index + 1).padStart(2, "0")}
