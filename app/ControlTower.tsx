@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import { deriveControlStageStates } from "./lib/control-loop";
+
 type Seed = typeof import("./data/seed.json");
 type ProductionPlan = typeof import("./data/production-plan.json");
 type ProductionSignals = typeof import("./data/production-signals.json");
@@ -13,6 +15,7 @@ type View =
   | "production"
   | "readiness";
 type Scope = "premium" | "all";
+type ControlTone = "healthy" | "watch" | "blocked" | "draft";
 
 const number = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 });
@@ -246,50 +249,67 @@ export function ControlTower({
     (row) => row.openingMissing,
   ).length;
   const materialBlockers = productionSignals.factoryPlanning.materials.blockers;
+  const controlStageStates = deriveControlStageStates({
+    demandPieces: productionPlan.totals.forecastPieces,
+    targetsStatus: productionSignals.targets.status,
+    openPoPieces: productionSignals.openPo.planningMonth.pendingPieces,
+    blockedPoPieces:
+      productionSignals.openPo.planningMonth.planCoverage.calculationBlockedPieces,
+    networkProjectedUnits: seed.liveReconciliation.all.projected,
+    missingDistributorOpenings,
+    criticalInventorySkus: seed.jmTotals.criticalSkus,
+    productionPieces: productionPlan.totals.productionPieces,
+    productionStatus: productionPlan.status,
+    materialBlockerCount: materialBlockers.length,
+    productionOrderCount:
+      productionSignals.factoryPlanning.officialForecast.augustProductionOrders,
+    approvalConfigured:
+      productionSignals.factoryPlanning.approvals.sapApprovalConfigured,
+  });
   const controlStages: {
     name: string;
     status: string;
-    tone: "healthy" | "watch" | "blocked" | "draft";
+    tone: ControlTone;
     signal: string;
     detail: string;
     target: View;
   }[] = [
     {
       name: "Demand",
-      status: "Input needed",
-      tone: "watch",
+      status: controlStageStates.demand.status,
+      tone: controlStageStates.demand.tone as ControlTone,
       signal: `${number.format(productionPlan.totals.forecastPieces)} draft demand pieces`,
       detail: `${productionSignals.planningMonth} targets ${productionSignals.targets.status.toLowerCase()}`,
       target: "production",
     },
     {
       name: "Platform POs",
-      status: "Blocked",
-      tone: "blocked",
+      status: controlStageStates.platformPos.status,
+      tone: controlStageStates.platformPos.tone as ControlTone,
       signal: `${number.format(productionSignals.openPo.planningMonth.pendingPieces)} open pieces`,
       detail: `${number.format(productionSignals.openPo.planningMonth.poCount)} POs · ${number.format(productionSignals.openPo.planningMonth.planCoverage.calculationBlockedPieces)} pieces blocked`,
       target: "production",
     },
     {
       name: "Network stock",
-      status: "Watch",
-      tone: "watch",
+      status: controlStageStates.networkStock.status,
+      tone: controlStageStates.networkStock.tone as ControlTone,
       signal: `${number.format(seed.liveReconciliation.all.projected)} projected units`,
       detail: `${number.format(seed.jmTotals.available)} JM available · ${missingDistributorOpenings} missing openings · ${seed.jmTotals.criticalSkus} critical JM SKUs`,
       target: "distributors",
     },
     {
       name: "Production",
-      status: productionPlan.status,
-      tone: "draft",
+      status: controlStageStates.production.status,
+      tone: controlStageStates.production.tone as ControlTone,
       signal: `${number.format(productionPlan.totals.productionPieces)} draft pieces`,
       detail: `${number.format(productionPlan.totals.productionCases)} cases · ${productionSignals.factoryPlanning.officialForecast.augustProductionOrders} August production orders`,
       target: "production",
     },
     {
       name: "Materials",
-      status: materialBlockers.length > 0 ? "Blocked" : "Ready",
-      tone: materialBlockers.length > 0 ? "blocked" : "healthy",
+      status: controlStageStates.materials.status,
+      tone: controlStageStates.materials.tone as ControlTone,
       signal:
         materialBlockers.length > 0
           ? `${materialBlockers.length} residual blockers`
@@ -302,8 +322,8 @@ export function ControlTower({
     },
     {
       name: "Approval & dispatch",
-      status: "Manual gate",
-      tone: "blocked",
+      status: controlStageStates.approvalAndDispatch.status,
+      tone: controlStageStates.approvalAndDispatch.tone as ControlTone,
       signal: `${productionSignals.factoryPlanning.officialForecast.augustProductionOrders} August production orders`,
       detail: productionSignals.factoryPlanning.approvals.note,
       target: "readiness",
