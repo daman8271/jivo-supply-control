@@ -630,58 +630,40 @@
   ],
   "jmInventory": [
     {
-      "sapCode": "FG0000421",
-      "itemName": "COLD PRESS 1 LTR (NIRMAL RISHI ) 24 PCS",
-      "shortName": "COLD PRESS 1 LTR (NIRMAL RISHI ) 24 PCS",
-      "itemHead": "UNMAPPED",
-      "category": "UNMAPPED",
-      "warehouseCode": "GP-FGM",
-      "warehouse": "GUPTA FINISHED GOODS MART",
-      "city": "SONIPAT",
-      "onHand": 2086,
-      "liters": 2086,
-      "committed": 0,
-      "available": 2086,
-      "onOrder": 0,
-      "stockValue": 354620,
-      "status": "Healthy"
-    },
-    {
-      "sapCode": "FG0000422",
-      "itemName": "COLD PRESS 1 LTR (NIRMAL RISHI )20PCS",
-      "shortName": "COLD PRESS 1 LTR (NIRMAL RISHI )20PCS",
-      "itemHead": "UNMAPPED",
-      "category": "UNMAPPED",
-      "warehouseCode": "GP-FGM",
-      "warehouse": "GUPTA FINISHED GOODS MART",
-      "city": "SONIPAT",
-      "onHand": 8107,
-      "liters": 5896.25,
-      "committed": 0,
-      "available": 8107,
-      "onOrder": 0,
-      "stockValue": 1378190,
-      "status": "Healthy"
-    },
-    {
       "sapCode": "FG0000032",
-      "itemName": "COLD PRESS 1 LTR 20 PCS",
+      "sourceSapCodes": [
+        "FG0000421",
+        "FG0000422",
+        "FG0000032"
+      ],
+      "sourceItemNames": [
+        "COLD PRESS 1 LTR (NIRMAL RISHI ) 24 PCS",
+        "COLD PRESS 1 LTR (NIRMAL RISHI )20PCS",
+        "COLD PRESS 1 LTR 20 PCS"
+      ],
+      "itemName": "CANOLA 1L · 3 SAP codes",
       "shortName": "CANOLA 1L",
       "itemHead": "PREMIUM",
       "category": "CANOLA",
       "warehouseCode": "GP-FGM",
       "warehouse": "GUPTA FINISHED GOODS MART",
       "city": "SONIPAT",
-      "onHand": 3006,
-      "liters": 2998.6,
+      "onHand": 13199,
+      "liters": 10980.85,
       "committed": 3360,
-      "available": -354,
+      "available": 9839,
       "onOrder": 0,
-      "stockValue": 511020,
-      "status": "Critical"
+      "stockValue": 2243830,
+      "status": "Healthy"
     },
     {
       "sapCode": "FG0000142",
+      "sourceSapCodes": [
+        "FG0000142"
+      ],
+      "sourceItemNames": [
+        "COLD PRESS GROUNDNUT OIL 1 LTR 16 PCS"
+      ],
       "itemName": "COLD PRESS GROUNDNUT OIL 1 LTR 16 PCS",
       "shortName": "GROUNDNUT 1L",
       "itemHead": "PREMIUM",
@@ -699,6 +681,12 @@
     },
     {
       "sapCode": "FG0000143",
+      "sourceSapCodes": [
+        "FG0000143"
+      ],
+      "sourceItemNames": [
+        "COLD PRESS GROUNDNUT OIL 5 LTR 4 PCS"
+      ],
       "itemName": "COLD PRESS GROUNDNUT OIL 5 LTR 4 PCS",
       "shortName": "GROUNDNUT 5L",
       "itemHead": "PREMIUM",
@@ -716,6 +704,12 @@
     },
     {
       "sapCode": "FG0000081",
+      "sourceSapCodes": [
+        "FG0000081"
+      ],
+      "sourceItemNames": [
+        "COLD PRESS SUNFLOWER 1 LTR 20 PCS"
+      ],
       "itemName": "COLD PRESS SUNFLOWER 1 LTR 20 PCS",
       "shortName": "SUNFLOWER 1L",
       "itemHead": "COMMODITY",
@@ -733,6 +727,12 @@
     },
     {
       "sapCode": "FG0000005",
+      "sourceSapCodes": [
+        "FG0000005"
+      ],
+      "sourceItemNames": [
+        "EXTRA LIGHT OLIVE 1 LTR 16 PCS"
+      ],
       "itemName": "EXTRA LIGHT OLIVE 1 LTR 16 PCS",
       "shortName": "EXTRA LIGHT 1L",
       "itemHead": "PREMIUM",
@@ -750,6 +750,12 @@
     },
     {
       "sapCode": "FG0000009",
+      "sourceSapCodes": [
+        "FG0000009"
+      ],
+      "sourceItemNames": [
+        "EXTRA LIGHT OLIVE 5 LTR TIN 4 PCS"
+      ],
       "itemName": "EXTRA LIGHT OLIVE 5 LTR TIN 4 PCS",
       "shortName": "EXTRA LIGHT 5L",
       "itemHead": "PREMIUM",
@@ -767,6 +773,12 @@
     },
     {
       "sapCode": "FG0000039",
+      "sourceSapCodes": [
+        "FG0000039"
+      ],
+      "sourceItemNames": [
+        "EXTRA LIGHT OLIVE 500 MLS 24 PCS"
+      ],
       "itemName": "EXTRA LIGHT OLIVE 500 MLS 24 PCS",
       "shortName": "EXTRA LIGHT OLIVE 500 MLS 24 PCS",
       "itemHead": "UNMAPPED",
@@ -784,6 +796,12 @@
     },
     {
       "sapCode": "FG0000042",
+      "sourceSapCodes": [
+        "FG0000042"
+      ],
+      "sourceItemNames": [
+        "EXTRA VIRGIN OLIVE 1 LTR 16 PCS"
+      ],
       "itemName": "EXTRA VIRGIN OLIVE 1 LTR 16 PCS",
       "shortName": "EXTRA VIRGIN 1L",
       "itemHead": "PREMIUM",
@@ -801,6 +819,12 @@
     },
     {
       "sapCode": "FG0000074",
+      "sourceSapCodes": [
+        "FG0000074"
+      ],
+      "sourceItemNames": [
+        "EXTRA VIRGIN OLIVE 5 LTR TIN 4 PCS IMPORTED"
+      ],
       "itemName": "EXTRA VIRGIN OLIVE 5 LTR TIN 4 PCS IMPORTED",
       "shortName": "EXTRA VIRGIN 5L",
       "itemHead": "PREMIUM",
@@ -818,6 +842,12 @@
     },
     {
       "sapCode": "FG0000161",
+      "sourceSapCodes": [
+        "FG0000161"
+      ],
+      "sourceItemNames": [
+        "EXTRA VIRGIN OLIVE 500 MLS 24 PCS"
+      ],
       "itemName": "EXTRA VIRGIN OLIVE 500 MLS 24 PCS",
       "shortName": "EXTRA VIRGIN 500ML",
       "itemHead": "PREMIUM",
@@ -835,6 +865,12 @@
     },
     {
       "sapCode": "FG0000149",
+      "sourceSapCodes": [
+        "FG0000149"
+      ],
+      "sourceItemNames": [
+        "JIVO GOLD 1 LTR 20 PCS"
+      ],
       "itemName": "JIVO GOLD 1 LTR 20 PCS",
       "shortName": "GOLD 1L",
       "itemHead": "COMMODITY",
@@ -852,6 +888,12 @@
     },
     {
       "sapCode": "FG0000011",
+      "sourceSapCodes": [
+        "FG0000011"
+      ],
+      "sourceItemNames": [
+        "MUSTARD KACCHI GHANI 5 LTR 4 PCS"
+      ],
       "itemName": "MUSTARD KACCHI GHANI 5 LTR 4 PCS",
       "shortName": "MUSTARD 5L",
       "itemHead": "COMMODITY",
@@ -869,6 +911,12 @@
     },
     {
       "sapCode": "FG0000106",
+      "sourceSapCodes": [
+        "FG0000106"
+      ],
+      "sourceItemNames": [
+        "MUSTARD KACHHI GHANI 1 LTR POUCH 12 PCS"
+      ],
       "itemName": "MUSTARD KACHHI GHANI 1 LTR POUCH 12 PCS",
       "shortName": "MUSTARD 1L POUCH",
       "itemHead": "COMMODITY",
@@ -886,6 +934,12 @@
     },
     {
       "sapCode": "FG0000028",
+      "sourceSapCodes": [
+        "FG0000028"
+      ],
+      "sourceItemNames": [
+        "POMACE OLIVE 1 LTR 16 PCS"
+      ],
       "itemName": "POMACE OLIVE 1 LTR 16 PCS",
       "shortName": "JIVO POMACE 1L",
       "itemHead": "PREMIUM",
@@ -903,6 +957,12 @@
     },
     {
       "sapCode": "FG0000008",
+      "sourceSapCodes": [
+        "FG0000008"
+      ],
+      "sourceItemNames": [
+        "POMACE OLIVE 5 LTR TIN 4 PCS"
+      ],
       "itemName": "POMACE OLIVE 5 LTR TIN 4 PCS",
       "shortName": "JIVO POMACE 5L",
       "itemHead": "PREMIUM",
@@ -920,6 +980,12 @@
     },
     {
       "sapCode": "FG0000230",
+      "sourceSapCodes": [
+        "FG0000230"
+      ],
+      "sourceItemNames": [
+        "RICE BRAN OIL 5 LTR 4 PCS"
+      ],
       "itemName": "RICE BRAN OIL 5 LTR 4 PCS",
       "shortName": "RICE BRAN 5L",
       "itemHead": "COMMODITY",
@@ -937,6 +1003,12 @@
     },
     {
       "sapCode": "FG0000152",
+      "sourceSapCodes": [
+        "FG0000152"
+      ],
+      "sourceItemNames": [
+        "SANO OLIVE CLASSIC 5 LTR TIN 4 PCS"
+      ],
       "itemName": "SANO OLIVE CLASSIC 5 LTR TIN 4 PCS",
       "shortName": "SANO OLIVE CLASSIC 5 LTR TIN 4 PCS",
       "itemHead": "UNMAPPED",
@@ -954,6 +1026,12 @@
     },
     {
       "sapCode": "FG0000150",
+      "sourceSapCodes": [
+        "FG0000150"
+      ],
+      "sourceItemNames": [
+        "SANO POMACE OLIVE 1 LTR 16 PCS"
+      ],
       "itemName": "SANO POMACE OLIVE 1 LTR 16 PCS",
       "shortName": "SANO POMACE 1L",
       "itemHead": "PREMIUM",
@@ -971,6 +1049,12 @@
     },
     {
       "sapCode": "FG0000151",
+      "sourceSapCodes": [
+        "FG0000151"
+      ],
+      "sourceItemNames": [
+        "SANO POMACE OLIVE 5 LTR TIN 4 PCS"
+      ],
       "itemName": "SANO POMACE OLIVE 5 LTR TIN 4 PCS",
       "shortName": "SANO POMACE 5L",
       "itemHead": "PREMIUM",
@@ -988,6 +1072,12 @@
     },
     {
       "sapCode": "FG0000229",
+      "sourceSapCodes": [
+        "FG0000229"
+      ],
+      "sourceItemNames": [
+        "SO OLIVE OIL 5 LTR 4 PCS"
+      ],
       "itemName": "SO OLIVE OIL 5 LTR 4 PCS",
       "shortName": "SO OLIVE 5L",
       "itemHead": "PREMIUM",
@@ -1005,6 +1095,12 @@
     },
     {
       "sapCode": "FG0000395",
+      "sourceSapCodes": [
+        "FG0000395"
+      ],
+      "sourceItemNames": [
+        "SOYABEAN OIL 1 LTR 20 PCS ROUND BOTTLE"
+      ],
       "itemName": "SOYABEAN OIL 1 LTR 20 PCS ROUND BOTTLE",
       "shortName": "SOYABEAN OIL 1 LTR 20 PCS ROUND BOTTLE",
       "itemHead": "UNMAPPED",
@@ -1022,6 +1118,12 @@
     },
     {
       "sapCode": "FG0000192",
+      "sourceSapCodes": [
+        "FG0000192"
+      ],
+      "sourceItemNames": [
+        "SOYABEAN OIL 5 LTR 4 PCS"
+      ],
       "itemName": "SOYABEAN OIL 5 LTR 4 PCS",
       "shortName": "SOYABEAN 5L",
       "itemHead": "COMMODITY",
@@ -1039,6 +1141,12 @@
     },
     {
       "sapCode": "FG0000385",
+      "sourceSapCodes": [
+        "FG0000385"
+      ],
+      "sourceItemNames": [
+        "YELLOW MUSTARD OIL 5 LTR TIN 4 PCS"
+      ],
       "itemName": "YELLOW MUSTARD OIL 5 LTR TIN 4 PCS",
       "shortName": "YELLOW MUSTARD OIL 5 LTR TIN 4 PCS",
       "itemHead": "UNMAPPED",
@@ -1056,15 +1164,15 @@
     }
   ],
   "jmTotals": {
-    "skus": 25,
+    "skus": 23,
     "onHand": 190934,
     "liters": 298226.69,
     "committed": 45792,
     "available": 145142,
     "onOrder": 14920,
     "stockValue": 66711385,
-    "criticalSkus": 4,
-    "unmappedSkus": 6
+    "criticalSkus": 3,
+    "unmappedSkus": 4
   },
   "liveReconciliation": {
     "from": "2026-07-16",

@@ -42,10 +42,10 @@ test("seed data preserves reconciled inventory totals", async () => {
     await readFile(new URL("../app/data/seed.json", import.meta.url), "utf8"),
   );
 
-  assert.equal(seed.jmTotals.skus, 25);
+  assert.equal(seed.jmTotals.skus, 23);
   assert.equal(seed.jmTotals.onHand, 190934);
   assert.equal(seed.jmTotals.available, 145142);
-  assert.equal(seed.jmTotals.criticalSkus, 4);
+  assert.equal(seed.jmTotals.criticalSkus, 3);
   assert.equal(seed.distributorSummary.length, 6);
   assert.equal(seed.formula.equivalent, "BAL = SOH + Billing - GRN");
   assert.equal(seed.liveReconciliation.all.opening, 134378);
@@ -58,4 +58,14 @@ test("seed data preserves reconciled inventory totals", async () => {
       seed.liveReconciliation.all.billing -
       seed.liveReconciliation.all.grn,
   );
+  const canola = seed.jmInventory.find(
+    (row) => row.sapCode === "FG0000032",
+  );
+  assert.deepEqual(canola.sourceSapCodes.sort(), [
+    "FG0000032",
+    "FG0000421",
+    "FG0000422",
+  ]);
+  assert.equal(canola.available, 9839);
+  assert.equal(canola.status, "Healthy");
 });
