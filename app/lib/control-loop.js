@@ -107,3 +107,14 @@ export function deriveActiveControlActions(input) {
   }
   return actions;
 }
+
+/**
+ * Keep the chain verdict aligned with both planner actions and blocked stages.
+ * @param {{ actionCount: number; stages: { name: string; tone: string }[] }} input
+ */
+export function deriveControlVerdictState(input) {
+  if (input.actionCount > 0) return { kind: "action", blockedStage: null };
+  const blockedStage = input.stages.find((stage) => stage.tone === "blocked");
+  if (blockedStage) return { kind: "stage-blocked", blockedStage };
+  return { kind: "clear", blockedStage: null };
+}

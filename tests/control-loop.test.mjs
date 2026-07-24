@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   deriveActiveControlActions,
   deriveControlStageStates,
+  deriveControlVerdictState,
 } from "../app/lib/control-loop.js";
 
 const healthyFixture = {
@@ -135,4 +136,17 @@ test("resolved exceptions disappear from the planner action queue", () => {
     "upload-targets",
   ]);
   assert.deepEqual(clear, []);
+});
+
+test("a blocked stage prevents a false all-clear verdict", () => {
+  const verdict = deriveControlVerdictState({
+    actionCount: 0,
+    stages: [
+      { name: "Demand", tone: "healthy" },
+      { name: "Approval & dispatch", tone: "blocked" },
+    ],
+  });
+
+  assert.equal(verdict.kind, "stage-blocked");
+  assert.equal(verdict.blockedStage.name, "Approval & dispatch");
 });

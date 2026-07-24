@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import {
   deriveActiveControlActions,
   deriveControlStageStates,
+  deriveControlVerdictState,
 } from "./lib/control-loop";
 
 type Seed = typeof import("./data/seed.json");
@@ -341,7 +342,7 @@ export function ControlTower({
       target: "readiness",
     },
   ];
-  const controlActions: {
+  const allControlActions: {
     id: string;
     title: string;
     owner: string;
@@ -383,8 +384,20 @@ export function ControlTower({
       consequence: "The draft has no official primary or secondary demand benchmark.",
       target: "production",
     },
-  ].filter((action) => activeControlActionIds.includes(action.id));
+  ];
+  const controlActions = allControlActions.filter((action) =>
+    activeControlActionIds.includes(action.id),
+  );
   const nextControlAction = controlActions[0];
+  const controlVerdict = deriveControlVerdictState({
+    actionCount: controlActions.length,
+    stages: controlStages,
+  });
+  const blockedControlStage = controlVerdict.blockedStage
+    ? controlStages.find(
+        (stage) => stage.name === controlVerdict.blockedStage?.name,
+      )
+    : undefined;
 
   function downloadProductionCsv() {
     const headings = [
@@ -484,17 +497,32 @@ export function ControlTower({
                 <p>
                   {nextControlAction
                     ? `The current snapshot has ${controlActions.length} unresolved chain ${controlActions.length === 1 ? "action" : "actions"}. Start with the first priority below, then follow the impact downstream.`
-                    : "Every qualified signal in the current snapshot is clear. Continue monitoring source freshness and review new exceptions as they arrive."}
+                    : blockedControlStage
+                      ? `${blockedControlStage.name} remains blocked even though no planner action is currently queued. Review the stage evidence before treating the chain as clear.`
+                      : "Every qualified signal in the current snapshot is clear. Continue monitoring source freshness and review new exceptions as they arrive."}
                 </p>
               </div>
               <div className="control-verdict" aria-label="Current chain verdict">
                 <span>{nextControlAction ? "Next action" : "Chain status"}</span>
-                <strong>{nextControlAction?.title ?? "No blocking action"}</strong>
+                <strong>
+                  {nextControlAction?.title ??
+                    (blockedControlStage
+                      ? `Review ${blockedControlStage.name}`
+                      : "No blocking action")}
+                </strong>
                 <button
                   type="button"
-                  onClick={() => setView(nextControlAction?.target ?? "overview")}
+                  onClick={() =>
+                    setView(
+                      nextControlAction?.target ??
+                        blockedControlStage?.target ??
+                        "overview",
+                    )
+                  }
                 >
-                  {nextControlAction ? "Open detail" : "Review overview"}{" "}
+                  {nextControlAction || blockedControlStage
+                    ? "Open detail"
+                    : "Review overview"}{" "}
                   <span aria-hidden="true">→</span>
                 </button>
               </div>
