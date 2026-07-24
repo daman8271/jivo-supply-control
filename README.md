@@ -1,8 +1,8 @@
 # Jivo Supply Control
 
-An e-commerce supply-chain control tower for Jivo inventory, distributor stock,
-platform purchase orders, GRNs, billing reconciliation, and monthly factory
-production planning.
+An e-commerce supply-chain control tower for Jivo demand, platform purchase
+orders, network inventory, factory production, materials, approval readiness,
+and distributor reconciliation.
 
 > **Public data notice:** this repository intentionally contains a snapshot of
 > real operational inventory, distributor, and platform-PO data. It was
@@ -11,6 +11,12 @@ production planning.
 
 ## What it does
 
+- Opens on an end-to-end **Control loop** that shows chain health, blockers, and
+  the next planner action in one view
+- Connects the six planning stages: Demand → Platform POs → Network stock →
+  Production → Materials → Approval & dispatch
+- Prioritizes planner-owned actions with a responsible role, downstream
+  consequence, and link to the supporting detail view
 - Reconciles distributor inventory using `SOH = BAL + GRN - Billing`
 - Shows JM own inventory, commitments, availability, and critical SKUs
 - Combines Cold Press 1L and Canola 1L as one planning product
@@ -21,9 +27,9 @@ production planning.
 - Exports a draft in the SAP `SalesForecast` line format
 
 The current planning snapshot is for **August 2026**, using source data reviewed
-on **24 July 2026**. It remains a draft: commercial assumptions, material
-availability, factory execution constraints, and approvers must be confirmed
-before a factory order is released.
+on **24 July 2026**. Source systems remain read-only. Recommendations and
+exports stay in the planner and remain drafts until a person approves them;
+the software does not create source-system orders or dispatches.
 
 ## Planning logic
 
@@ -64,8 +70,11 @@ npm run lint
   arrive
 - Factory shifts, physical line overlap, changeovers, minimum runs, and
   approvers still need confirmation
-- The current repository is a data snapshot; unattended CLI refresh jobs are
-  not yet included
+- No active SAP approval template covers the forecast or production order
+- Approval and dispatch stages show readiness only; there is no live execution,
+  automated release, or source-system write-back
+- The current repository uses a dated snapshot; unattended refresh jobs are not
+  included
 
 ## Technology
 

@@ -23,18 +23,31 @@ async function render() {
   );
 }
 
-test("server-renders the Jivo inventory control tower", async () => {
+test("server-renders the end-to-end supply control loop by default", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
   assert.match(html, /<title>Jivo Supply Control<\/title>/i);
-  assert.match(html, /See every litre before it gets stuck\./);
-  assert.match(html, /Distributor balance/);
-  assert.match(html, /JM available/);
+  assert.match(html, /Control loop/);
+  assert.match(html, /Demand/);
+  assert.match(html, /Platform POs/);
+  assert.match(html, /Network stock/);
+  assert.match(html, /Production/);
+  assert.match(html, /Materials/);
+  assert.match(html, /Approval &amp; dispatch/);
+  assert.match(html, /Prioritized action queue/);
+  assert.match(html, /Unblock 67,807 PO pieces/);
+  assert.match(html, /Resolve 6 material blockers/);
+  assert.match(html, /Confirm 2 missing distributor openings/);
+  assert.match(html, /Address 3 critical JM SKUs/);
+  assert.match(html, /Upload August targets/);
+  assert.match(html, /Source systems remain read-only/);
+  assert.match(html, /24 July 2026/);
+  assert.match(html, /recommended actions stay inside the planner until approved/i);
+  assert.match(html, /Overview/);
   assert.match(html, /Production planning/);
-  assert.match(html, /SOH = BAL \+ GRN - Billing/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|taking shape/i);
 });
 
