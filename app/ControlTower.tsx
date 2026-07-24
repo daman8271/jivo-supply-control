@@ -36,9 +36,9 @@ const requirements = [
   },
   {
     group: "Billing movements",
-    status: "Need",
-    have: "Aggregated billing quantity in the distributor report",
-    need: "Invoice number, date, SAP SKU, quantity, source and destination",
+    status: "Partial",
+    have: "Aggregated quantity plus mapped ecom CLI sales-invoice endpoints",
+    need: "Re-authenticate the CLI, then import invoice date, SAP SKU, quantity, source and destination",
   },
   {
     group: "GRN movements",
@@ -545,14 +545,14 @@ export function ControlTower({ seed }: { seed: Seed }) {
             <section className="readiness-summary">
               <div>
                 <span>Current readiness</span>
-                <strong>3 core sources mapped</strong>
+                <strong>4 core sources mapped</strong>
                 <p>
-                  Distributor inventory, JM inventory and platform PO/GRN data
-                  are enough for the read-only control tower.
+                  Distributor inventory, JM inventory, platform PO/GRN and the
+                  ecom billing route are mapped for the read-only control tower.
                 </p>
               </div>
-              <div className="readiness-score" aria-label="Data readiness 44 percent">
-                <strong>44%</strong>
+              <div className="readiness-score" aria-label="Data readiness 50 percent">
+                <strong>50%</strong>
                 <span>ready for automation</span>
               </div>
             </section>
