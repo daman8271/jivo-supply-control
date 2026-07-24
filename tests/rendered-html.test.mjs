@@ -47,6 +47,7 @@ test("server-renders the end-to-end supply control loop by default", async () =>
   assert.match(html, /24 July 2026/);
   assert.match(html, /recommended actions stay inside the planner until approved/i);
   assert.match(html, /Overview/);
+  assert.match(html, /SKU replenishment/);
   assert.match(html, /Production planning/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton|taking shape/i);
 });

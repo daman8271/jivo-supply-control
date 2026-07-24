@@ -7,6 +7,8 @@ import {
   deriveControlStageStates,
   deriveControlVerdictState,
 } from "./lib/control-loop";
+import ReplenishmentWorkbench from "./ReplenishmentWorkbench";
+import replenishmentData from "./data/distributor-replenishment.json";
 
 type Seed = typeof import("./data/seed.json");
 type ProductionPlan = typeof import("./data/production-plan.json");
@@ -15,6 +17,7 @@ type View =
   | "control"
   | "overview"
   | "inventory"
+  | "replenishment"
   | "distributors"
   | "production"
   | "readiness";
@@ -91,9 +94,10 @@ const nav: { id: View; label: string; short: string }[] = [
   { id: "control", label: "Control loop", short: "01" },
   { id: "overview", label: "Overview", short: "02" },
   { id: "inventory", label: "Own inventory", short: "03" },
-  { id: "distributors", label: "Distributor network", short: "04" },
-  { id: "production", label: "Production planning", short: "05" },
-  { id: "readiness", label: "Data readiness", short: "06" },
+  { id: "replenishment", label: "SKU replenishment", short: "04" },
+  { id: "distributors", label: "Distributor network", short: "05" },
+  { id: "production", label: "Production planning", short: "06" },
+  { id: "readiness", label: "Data readiness", short: "07" },
 ];
 
 export function ControlTower({
@@ -309,7 +313,7 @@ export function ControlTower({
       tone: controlStageStates.networkStock.tone as ControlTone,
       signal: `${number.format(seed.liveReconciliation.all.projected)} projected units`,
       detail: `${number.format(seed.jmTotals.available)} JM available · ${missingDistributorOpenings} missing openings · ${seed.jmTotals.criticalSkus} critical JM SKUs`,
-      target: "distributors",
+      target: "replenishment",
     },
     {
       name: "Production",
@@ -368,7 +372,7 @@ export function ControlTower({
       title: `Confirm ${missingDistributorOpenings} missing distributor openings`,
       owner: "Distributor operations",
       consequence: "Network coverage and replenishment decisions remain unreliable.",
-      target: "distributors",
+      target: "replenishment",
     },
     {
       id: "critical-inventory",
@@ -477,13 +481,33 @@ export function ControlTower({
       <section className="workspace">
         <header className="topbar">
           <div className="topbar-date">
-            <span>Snapshot</span>
-            <strong>24 July 2026 · 15:30 IST</strong>
+            <span>{view === "replenishment" ? "Planning cutoff" : "Snapshot"}</span>
+            <strong>
+              {view === "replenishment"
+                ? "24 July 2026 · 17:28 IST"
+                : "24 July 2026 · 15:30 IST"}
+            </strong>
           </div>
           <div className="topbar-actions">
-            <span className="source-count">{seed.sourceStatus.length} sources</span>
-            <button type="button" onClick={() => setView("readiness")}>
-              Data checklist
+            <span className="source-count">
+              {view === "replenishment"
+                ? replenishmentData.sources.length
+                : seed.sourceStatus.length}{" "}
+              sources
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                if (view === "replenishment") {
+                  document
+                    .getElementById("replenishment-sources-title")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  return;
+                }
+                setView("readiness");
+              }}
+            >
+              {view === "replenishment" ? "Source evidence" : "Data checklist"}
             </button>
           </div>
         </header>
@@ -937,6 +961,8 @@ export function ControlTower({
             </section>
           </div>
         )}
+
+        {view === "replenishment" && <ReplenishmentWorkbench />}
 
         {view === "distributors" && (
           <div className="page">
