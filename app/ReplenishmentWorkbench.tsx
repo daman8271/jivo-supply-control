@@ -3,15 +3,25 @@
 import { useMemo, useState } from "react";
 
 import replenishmentData from "./data/distributor-replenishment.json";
+import {
+  clearDistributorSelection,
+  selectAllDistributors,
+  toggleDistributorSelection,
+} from "./lib/distributor-selection.js";
 
 type Snapshot = typeof replenishmentData;
 type Row = Snapshot["rows"][number];
-type StatusFilter = "attention" | "replenish" | "blocked" | "all";
+type StatusFilter = "attention" | "requirement" | "replenish" | "blocked" | "all";
 
 const number = new Intl.NumberFormat("en-IN");
 const timestamp = new Intl.DateTimeFormat("en-IN", {
   dateStyle: "medium",
   timeStyle: "short",
+  timeZone: "Asia/Kolkata",
+});
+const monthYear = new Intl.DateTimeFormat("en-IN", {
+  month: "long",
+  year: "numeric",
   timeZone: "Asia/Kolkata",
 });
 const statusLabels: Record<string, string> = {
@@ -29,34 +39,63 @@ function formatSourceAsOf(value: string | null) {
   return `As of ${timestamp.format(new Date(value))} IST`;
 }
 
+function formatRequirementMonth(value: string) {
+  return monthYear.format(new Date(`${value}T00:00:00+05:30`));
+}
+
+function unqualifiedRequirementPieces(row: Row) {
+  return "unqualifiedLastMonthPoPieces" in row
+    ? (row.unqualifiedLastMonthPoPieces ?? 0)
+    : 0;
+}
+
 function matchesStatus(row: Row, status: StatusFilter) {
   if (status === "all") return true;
+  if (status === "requirement") {
+    return (
+      (row.requiredInventoryPieces ?? 0) > 0 ||
+      unqualifiedRequirementPieces(row) > 0
+    );
+  }
   if (status === "replenish") return row.status === "replenish";
   if (status === "blocked") {
     return ["identity-blocked", "blocked", "review"].includes(row.status);
   }
   return (
-    row.openPoPieces > 0 &&
-    !["covered", "no-demand"].includes(row.status)
+    (row.requiredInventoryPieces ?? 0) > 0 ||
+    unqualifiedRequirementPieces(row) > 0 ||
+    (row.openPoPieces > 0 && !["covered", "no-demand"].includes(row.status))
   );
 }
 
 export default function ReplenishmentWorkbench() {
-  const [distributor, setDistributor] = useState("all");
+  const [selectedDistributors, setSelectedDistributors] = useState<string[]>(() =>
+    replenishmentData.distributors.map((item) => item.id),
+  );
   const [status, setStatus] = useState<StatusFilter>("attention");
   const [query, setQuery] = useState("");
+  const selectedDistributorSet = useMemo(
+    () => new Set(selectedDistributors),
+    [selectedDistributors],
+  );
+
+  const toggleDistributor = (distributorId: string) => {
+    setSelectedDistributors((current) =>
+      toggleDistributorSelection(current, distributorId),
+    );
+  };
 
   const rows = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return replenishmentData.rows.filter((row) => {
-      if (distributor !== "all" && row.distributorId !== distributor) return false;
+      if (!selectedDistributorSet.has(row.distributorId)) return false;
       if (!matchesStatus(row, status)) return false;
       if (!normalized) return true;
       return [row.skuName, row.sapCode, row.distributorName, row.category]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(normalized));
     });
-  }, [distributor, query, status]);
+  }, [query, selectedDistributorSet, status]);
 
   const visibleOpenPo = rows.reduce((sum, row) => sum + row.openPoPieces, 0);
   const visibleRecommended = rows.reduce(
@@ -65,6 +104,10 @@ export default function ReplenishmentWorkbench() {
   );
   const visibleBlocked = rows.reduce(
     (sum, row) => sum + (row.recommendedPieces === null ? row.openPoPieces : 0),
+    0,
+  );
+  const visibleRequiredInventory = rows.reduce(
+    (sum, row) => sum + (row.requiredInventoryPieces ?? 0),
     0,
   );
   const distributorStats = replenishmentData.distributors.map((item) => {
@@ -86,6 +129,14 @@ export default function ReplenishmentWorkbench() {
           sum + (row.recommendedPieces === null ? row.openPoPieces : 0),
         0,
       ),
+      requiredInventoryPieces: distributorRows.reduce(
+        (sum, row) => sum + (row.requiredInventoryPieces ?? 0),
+        0,
+      ),
+      unqualifiedRequirementPieces: distributorRows.reduce(
+        (sum, row) => sum + unqualifiedRequirementPieces(row),
+        0,
+      ),
     };
   });
 
@@ -96,10 +147,10 @@ export default function ReplenishmentWorkbench() {
           <span className="eyebrow">Distributor × SKU control</span>
           <h1 id="replenishment-title">Know what to replenish, where and why.</h1>
           <p>
-            Every operational SKU from the distributor stock tracker or active PO set is
-            crossed with all six distributors. PO demand is offset only by qualified SKU
-            stock; stale stock, missing identities, openings and case packs stay visible as
-            blockers instead of becoming invented recommendations.
+            Every operational SKU from the distributor stock tracker, active PO set or
+            previous-month PO set is crossed with all six distributors. PO demand is offset
+            only by qualified SKU stock; stale stock, missing identities, openings and case
+            packs stay visible as blockers instead of becoming invented recommendations.
           </p>
         </div>
         <div className="replenishment-policy">
@@ -121,6 +172,16 @@ export default function ReplenishmentWorkbench() {
           <span>Open PO demand</span>
           <strong>{number.format(replenishmentData.summary.openPoPieces)} pcs</strong>
           <small>{number.format(replenishmentData.summary.mappedOpenPoPieces)} pieces mapped to SAP SKUs</small>
+        </article>
+        <article>
+          <span>{formatRequirementMonth(replenishmentData.policy.requirementPeriodStart)} inventory requirement</span>
+          <strong>{number.format(replenishmentData.summary.requiredInventoryPieces)} pcs</strong>
+          <small>
+            80% of {number.format(replenishmentData.summary.lastMonthQualifiedPoPieces)} qualified {formatRequirementMonth(replenishmentData.policy.requirementPeriodStart)} PO pieces · rounded up per distributor × SKU
+          </small>
+          <small>
+            {number.format(replenishmentData.summary.unqualifiedLastMonthPoPieces)} historical PO quantity excluded until SKU identity and UOM are qualified
+          </small>
         </article>
         <article className="summary-positive">
           <span>Release-ready replenishment</span>
@@ -149,17 +210,19 @@ export default function ReplenishmentWorkbench() {
       <section className="replenishment-distributors" aria-label="Distributor replenishment totals">
         {distributorStats.map((item) => (
           <button
-            aria-pressed={distributor === item.id}
-            className={distributor === item.id ? "selected" : ""}
+            aria-pressed={selectedDistributorSet.has(item.id)}
+            className={selectedDistributorSet.has(item.id) ? "selected" : ""}
             key={item.id}
             type="button"
-            onClick={() => setDistributor(distributor === item.id ? "all" : item.id)}
+            onClick={() => toggleDistributor(item.id)}
           >
             <strong>{item.name}</strong>
             <span>{number.format(item.openPoPieces)} PO pcs</span>
+            <span>{number.format(item.requiredInventoryPieces)} qualified required pcs</span>
             <small>
               {number.format(item.recommendedPieces)} replenish · {number.format(item.blockedPieces)} blocked
             </small>
+            <small>{number.format(item.unqualifiedRequirementPieces)} historical PO qty excluded from target</small>
           </button>
         ))}
       </section>
@@ -171,19 +234,31 @@ export default function ReplenishmentWorkbench() {
             <h2 id="sku-matrix-title">SKU replenishment matrix</h2>
           </div>
           <div className="replenishment-filters">
-            <label>
-              <span>Distributor</span>
-              <select value={distributor} onChange={(event) => setDistributor(event.target.value)}>
-                <option value="all">All distributors</option>
-                {replenishmentData.distributors.map((item) => (
-                  <option key={item.id} value={item.id}>{item.name}</option>
-                ))}
-              </select>
-            </label>
+            <div
+              className="replenishment-multi-select"
+              role="group"
+              aria-labelledby="distributor-selection-label"
+            >
+              <span id="distributor-selection-label">
+                Distributors · {selectedDistributors.length}/{replenishmentData.distributors.length} selected
+              </span>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDistributors(selectAllDistributors(replenishmentData.distributors))}
+                >
+                  Select all
+                </button>
+                <button type="button" onClick={() => setSelectedDistributors(clearDistributorSelection())}>
+                  Clear all
+                </button>
+              </div>
+            </div>
             <label>
               <span>Status</span>
               <select value={status} onChange={(event) => setStatus(event.target.value as StatusFilter)}>
                 <option value="attention">Needs attention</option>
+                <option value="requirement">Has requirement or requirement blocker</option>
                 <option value="replenish">Calculable replenishment</option>
                 <option value="blocked">Blocked or review</option>
                 <option value="all">Every SKU × distributor row</option>
@@ -203,6 +278,7 @@ export default function ReplenishmentWorkbench() {
 
         <div className="replenishment-visible-summary" aria-live="polite">
           <span><b>{number.format(rows.length)}</b> visible rows</span>
+          <span><b>{number.format(visibleRequiredInventory)}</b> required inventory pcs</span>
           <span><b>{number.format(visibleOpenPo)}</b> open PO pcs</span>
           <span><b>{number.format(visibleRecommended)}</b> recommended pcs</span>
           <span><b>{number.format(visibleBlocked)}</b> blocked-demand pcs</span>
@@ -211,11 +287,12 @@ export default function ReplenishmentWorkbench() {
         <div className="replenishment-table-wrap">
           <table className="replenishment-table">
             <caption className="sr-only">
-              Distributor by SKU open PO demand, qualified supply and draft replenishment recommendations
+              Distributor by SKU inventory requirement, open PO demand, qualified supply and draft replenishment recommendations
             </caption>
             <thead>
               <tr>
                 <th>Distributor / SKU</th>
+                <th>Required inventory</th>
                 <th>Open PO balance</th>
                 <th>Stock / inbound</th>
                 <th>Need / replenish</th>
@@ -234,6 +311,28 @@ export default function ReplenishmentWorkbench() {
                     </small>
                     <small>
                       Base {row.baseUom ?? "unknown"} · per unit {row.perUnit ?? "unknown"} · PO {row.planningUom ?? "unknown"}
+                    </small>
+                  </td>
+                  <td>
+                    <b>
+                      {row.requirementQualified && row.requiredInventoryPieces !== null
+                        ? number.format(row.requiredInventoryPieces)
+                        : "Blocked"}
+                    </b>
+                    <span>
+                      {row.lastMonthPoPieces !== null
+                        ? `80% of ${number.format(row.lastMonthPoPieces)} ${formatRequirementMonth(row.requirementPeriodStart)} PO pcs`
+                        : `${number.format(unqualifiedRequirementPieces(row))} historical PO qty unqualified`}
+                    </span>
+                    <small>
+                      {row.lastMonthPoCount} POs · {row.requirementPlatforms.join(", ") || "No POs in period"}
+                    </small>
+                    <small>
+                      PO refs {row.lastMonthPoNumbers.slice(0, 3).join(", ") || "none"}
+                      {row.lastMonthPoNumbers.length > 3 ? ` +${row.lastMonthPoNumbers.length - 3}` : ""}
+                    </small>
+                    <small>
+                      {row.requirementBlocker ?? "Display target only · rounded up to next piece"}
                     </small>
                   </td>
                   <td>
@@ -277,7 +376,7 @@ export default function ReplenishmentWorkbench() {
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="replenishment-empty">No SKU rows match the selected filters.</td>
+                  <td colSpan={6} className="replenishment-empty">No SKU rows match the selected filters.</td>
                 </tr>
               )}
             </tbody>

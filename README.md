@@ -19,6 +19,11 @@ and distributor reconciliation.
   consequence, and link to the supporting detail view
 - Tracks every canonical SKU across all six distributors in a dedicated
   **SKU replenishment** workbench
+- Lets planners select any combination of distributors, with independent card
+  toggles plus Select all and Clear all controls
+- Shows a display-only required inventory target per distributor × SKU as 80%
+  of the previous full calendar month's non-cancelled platform PO pieces,
+  rounded up to the next piece
 - Calculates a PO-only distributor replenishment draft from open PO balance,
   qualified SKU stock, confirmed inbound, and case-pack rounding
 - Keeps unmapped PO identities, missing openings, stale stock, negative
@@ -62,6 +67,9 @@ Raw replenishment = max(0, open PO balance
                            - confirmed inbound)
 
 Recommended replenishment = raw replenishment rounded up to case pack
+
+Required inventory target = ceil(80% × previous calendar month's
+                                 non-cancelled ordered PO pieces)
 ```
 
 The builder accepts only explicitly qualified open statuses, validates delivered
@@ -104,19 +112,23 @@ python3 scripts/build-distributor-replenishment.py \
   --antize-workbook <antize-physical-count.xlsx> \
   --calculator-items <calculator-items.json> \
   --master-products <ecom-master-products.json> \
+  --identity-map <released-product-identity-map.json> \
   --planning-as-of <ISO-8601-planning-cutoff> \
   --stock-as-of <YYYY-MM-DD> \
   --max-stock-age-days 2 \
   --output app/data/distributor-replenishment.json
 ```
 
-`--antize-physical-json <extracted-rows.json>` may be used instead of
-`--antize-workbook`; the two options are mutually exclusive. Every source file
-is fingerprinted in the generated snapshot.
+`--stock-json <extracted-rows.json>` may replace `--stock-workbook`, and
+`--antize-physical-json <extracted-rows.json>` may replace `--antize-workbook`.
+Each pair is mutually exclusive. Every source file is fingerprinted in the
+generated snapshot.
 
-The SKU universe is the union of stock-tracker SKUs and exact-mapped active-PO
-SKUs. PO identities that cannot be mapped to a company-qualified SAP SKU remain
-separate blocker rows instead of being joined by product-name similarity.
+The SKU universe is the union of stock-tracker SKUs and exact-mapped active or
+previous-month PO SKUs. PO identities that cannot be mapped to a
+company-qualified SAP SKU remain separate blocker rows instead of being joined
+by product-name similarity. Their historical quantity remains disclosed as
+unqualified evidence, but no required inventory target is invented for them.
 
 ## Current limitations
 

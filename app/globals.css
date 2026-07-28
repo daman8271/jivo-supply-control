@@ -2135,7 +2135,7 @@ td small {
 
 .replenishment-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
   gap: 12px;
 }
 
@@ -2302,6 +2302,46 @@ td small {
   gap: 5px;
 }
 
+.replenishment-multi-select {
+  display: grid;
+  gap: 5px;
+}
+
+.replenishment-multi-select > span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.replenishment-multi-select > div {
+  display: flex;
+  gap: 6px;
+}
+
+.replenishment-multi-select button {
+  min-height: 38px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.replenishment-multi-select button:hover {
+  border-color: var(--green-2);
+  background: #eef4ef;
+}
+
+.replenishment-multi-select button:focus-visible {
+  outline: 3px solid rgba(29, 87, 67, 0.24);
+  outline-offset: 1px;
+}
+
 .replenishment-filters label > span {
   color: var(--muted);
   font-size: 10px;
@@ -2374,20 +2414,27 @@ td small {
 }
 
 .replenishment-table th:first-child {
-  width: 28%;
+  width: 22%;
 }
 
 .replenishment-table th:nth-child(2) {
-  width: 18%;
+  width: 16%;
 }
 
-.replenishment-table th:nth-child(3),
+.replenishment-table th:nth-child(3) {
+  width: 14%;
+}
+
 .replenishment-table th:nth-child(4) {
-  width: 18%;
+  width: 16%;
+}
+
+.replenishment-table th:nth-child(5) {
+  width: 15%;
 }
 
 .replenishment-table th:last-child {
-  width: 18%;
+  width: 17%;
 }
 
 .replenishment-table td {
@@ -2437,7 +2484,7 @@ td small {
   background: rgba(166, 59, 50, 0.035);
 }
 
-.replenishment-row.status-replenish td:nth-child(4) b {
+.replenishment-row.status-replenish td:nth-child(5) b {
   color: var(--green-2);
 }
 
@@ -2611,14 +2658,20 @@ td small {
 
   .replenishment-filters,
   .replenishment-filters label,
+  .replenishment-multi-select,
   .replenishment-filters select,
   .replenishment-filters input,
   .replenishment-search input {
     width: 100%;
   }
 
+  .replenishment-multi-select > div,
+  .replenishment-multi-select button {
+    flex: 1;
+  }
+
   .replenishment-table {
-    min-width: 780px;
+    min-width: 980px;
     table-layout: auto;
   }
 }

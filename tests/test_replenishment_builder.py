@@ -19,6 +19,7 @@ def po_row(**overrides):
         "status": "CONFIRMED",
         "item_status": "PENDING",
         "po_expiry_date": "2026-07-31",
+        "po_date": "2026-06-15",
         "order_qty": 100,
         "delivered_qty": 40,
         "filled_qty": 40,
@@ -41,6 +42,34 @@ class BuilderQualificationTests(unittest.TestCase):
     def test_unknown_open_status_fails_closed(self):
         with self.assertRaises(ValueError):
             BUILDER.qualify_open_po_row(po_row(status="UNKNOWN_STATE"), date(2026, 7, 24))
+
+    def test_requirement_uses_previous_full_month_and_excludes_only_cancelled(self):
+        month_start, month_end = BUILDER.previous_calendar_month(date(2026, 7, 24))
+        self.assertEqual((month_start, month_end), (date(2026, 6, 1), date(2026, 6, 30)))
+        completed = po_row(open_close="CLOSED", status="COMPLETED")
+        expired = po_row(open_close="CLOSED", status="EXPIRED")
+        cancelled = po_row(status="CANCELLED")
+        canceled = po_row(status="CANCELED")
+        cancelled_post_creation = po_row(status="CANCELLED POST CREATION")
+        july = po_row(po_date="2026-07-01")
+        self.assertEqual(
+            BUILDER.qualify_requirement_po_row(completed, month_start, month_end)["orderQty"],
+            100,
+        )
+        self.assertEqual(
+            BUILDER.qualify_requirement_po_row(expired, month_start, month_end)["orderQty"],
+            100,
+        )
+        self.assertIsNone(BUILDER.qualify_requirement_po_row(cancelled, month_start, month_end))
+        self.assertIsNone(BUILDER.qualify_requirement_po_row(canceled, month_start, month_end))
+        self.assertIsNone(
+            BUILDER.qualify_requirement_po_row(cancelled_post_creation, month_start, month_end)
+        )
+        self.assertIsNone(BUILDER.qualify_requirement_po_row(july, month_start, month_end))
+
+    def test_requirement_rounds_80_percent_up_to_next_piece(self):
+        self.assertEqual(BUILDER.calculate_required_inventory(100), 80)
+        self.assertEqual(BUILDER.calculate_required_inventory(101), 81)
 
     def test_exact_duplicates_collapse_and_conflicting_versions_fail(self):
         seen = {}

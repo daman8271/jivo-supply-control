@@ -3,10 +3,23 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 
 import { calculatePoReplenishment } from "../app/lib/replenishment.js";
+import {
+  clearDistributorSelection,
+  selectAllDistributors,
+  toggleDistributorSelection,
+} from "../app/lib/distributor-selection.js";
 
 const snapshot = JSON.parse(
   await readFile(new URL("../app/data/distributor-replenishment.json", import.meta.url), "utf8"),
 );
+
+test("distributor selection supports independent multi-select, clear and select all", () => {
+  const distributors = [{ id: "chirag" }, { id: "antize" }, { id: "evara" }];
+  assert.deepEqual(selectAllDistributors(distributors), ["chirag", "antize", "evara"]);
+  assert.deepEqual(toggleDistributorSelection(["chirag"], "antize"), ["chirag", "antize"]);
+  assert.deepEqual(toggleDistributorSelection(["chirag", "antize"], "chirag"), ["antize"]);
+  assert.deepEqual(clearDistributorSelection(), []);
+});
 
 test("calculates PO-only replenishment with stock and case-pack rounding", () => {
   assert.deepEqual(
@@ -106,6 +119,37 @@ test("snapshot never assumes unknown inbound is zero", () => {
         row.confirmedInboundPieces === null &&
         row.confirmedInboundIncludedPieces === null,
     ),
+  );
+});
+
+test("previous-month requirement reconciles and rounds once per distributor-SKU", () => {
+  assert.equal(snapshot.policy.requirementPeriodStart, "2026-06-01");
+  assert.equal(snapshot.policy.requirementPeriodEnd, "2026-06-30");
+  assert.equal(
+    snapshot.summary.lastMonthQualifiedPoPieces +
+      snapshot.summary.unqualifiedLastMonthPoPieces,
+    466684,
+  );
+  assert.equal(
+    snapshot.rows.reduce((sum, row) => sum + (row.lastMonthPoPieces ?? 0), 0),
+    snapshot.summary.lastMonthQualifiedPoPieces,
+  );
+  assert.equal(
+    snapshot.rows.reduce((sum, row) => sum + (row.requiredInventoryPieces ?? 0), 0),
+    snapshot.summary.requiredInventoryPieces,
+  );
+
+  for (const row of snapshot.rows.filter((item) => item.requirementQualified)) {
+    assert.equal(
+      row.requiredInventoryPieces,
+      Math.ceil((row.lastMonthPoPieces * 80) / 100),
+      row.id,
+    );
+  }
+  assert.ok(
+    snapshot.rows
+      .filter((row) => !row.requirementQualified)
+      .every((row) => row.requiredInventoryPieces === null),
   );
 });
 
@@ -226,10 +270,17 @@ test("consistent exact product mappings can qualify a missing calculator case pa
   assert.equal(row.recommendedPieces, null, "stale stock must still block release");
 });
 
-test("identity blockers preserve PO demand without assigning a fake SKU", () => {
+test("identity blockers preserve current or historical PO evidence without assigning a fake SKU", () => {
   const blockers = snapshot.rows.filter((row) => row.status === "identity-blocked");
   assert.ok(blockers.length > 0);
   assert.ok(blockers.every((row) => row.sapCode === null));
-  assert.ok(blockers.every((row) => row.openPoPieces > 0));
+  assert.ok(
+    blockers.every(
+      (row) =>
+        row.openPoPieces > 0 ||
+        ("unqualifiedLastMonthPoPieces" in row && row.unqualifiedLastMonthPoPieces > 0),
+    ),
+  );
   assert.ok(blockers.every((row) => row.recommendedPieces === null));
+  assert.ok(blockers.every((row) => row.blocker.length > 0));
 });

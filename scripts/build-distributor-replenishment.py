@@ -10,7 +10,7 @@ import math
 import re
 import zipfile
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -224,6 +224,43 @@ def qualify_open_po_row(row: dict, as_of_date: date):
     }
 
 
+def previous_calendar_month(as_of_date: date) -> tuple[date, date]:
+    current_month_start = as_of_date.replace(day=1)
+    previous_month_end = current_month_start - timedelta(days=1)
+    return previous_month_end.replace(day=1), previous_month_end
+
+
+def qualify_requirement_po_row(row: dict, month_start: date, month_end: date):
+    """Return ordered pieces for a non-cancelled PO created in the prior month."""
+    po_date_text = str(row.get("po_date") or "")
+    if not po_date_text:
+        return None
+    po_date = date.fromisoformat(po_date_text[:10])
+    if po_date < month_start or po_date > month_end:
+        return None
+    statuses = {
+        str(row.get(field) or "").upper()
+        for field in ("po_status", "status", "item_status")
+    }
+    if any(status in {"CANCELLED", "CANCELED"} or status.startswith("CANCEL") for status in statuses):
+        return None
+    order_qty = explicit_integer(row.get("order_qty"))
+    if order_qty is None or order_qty < 0:
+        raise ValueError(f"Missing/invalid historical order quantity for {row.get('po_number')}")
+    return {
+        "orderQty": order_qty,
+        "poDate": po_date_text[:10],
+        "statuses": tuple(sorted(statuses)),
+    }
+
+
+def calculate_required_inventory(last_month_po_pieces: int, percent: int = 80) -> int:
+    """Round the aggregate distributor-SKU display target up to the next piece."""
+    if last_month_po_pieces < 0 or percent < 0:
+        raise ValueError("Requirement inputs cannot be negative")
+    return math.ceil(last_month_po_pieces * percent / 100)
+
+
 def accept_deduplicated_line(seen: dict, key: tuple, signature: tuple) -> bool:
     """Accept one current line; collapse exact repeats and fail on conflicts."""
     if key not in seen:
@@ -254,25 +291,35 @@ def round_replenishment(
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--master-po", required=True, type=Path)
-    parser.add_argument("--stock-workbook", required=True, type=Path)
+    stock_source = parser.add_mutually_exclusive_group(required=True)
+    stock_source.add_argument("--stock-workbook", type=Path)
+    stock_source.add_argument("--stock-json", type=Path)
     antize_source = parser.add_mutually_exclusive_group(required=True)
     antize_source.add_argument("--antize-workbook", type=Path)
     antize_source.add_argument("--antize-physical-json", type=Path)
     parser.add_argument("--calculator-items", required=True, type=Path)
     parser.add_argument("--master-products", required=True, type=Path)
+    parser.add_argument("--identity-map", required=True, type=Path)
     parser.add_argument("--planning-as-of", required=True)
     parser.add_argument("--stock-as-of", required=True)
     parser.add_argument("--max-stock-age-days", type=int, default=2)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
     as_of_date = date.fromisoformat(args.planning_as_of[:10])
+    requirement_month_start, requirement_month_end = previous_calendar_month(as_of_date)
     stock_as_of_date = date.fromisoformat(args.stock_as_of[:10])
     stock_age_days = (as_of_date - stock_as_of_date).days
     if stock_age_days < 0:
         raise ValueError("Stock as-of date cannot be later than the PO snapshot")
     stock_is_fresh = stock_age_days <= args.max_stock_age_days
 
-    stock_rows = read_first_sheet(args.stock_workbook)
+    if args.stock_json:
+        stock_rows = json.loads(args.stock_json.read_text())
+        stock_source_path = args.stock_json
+    else:
+        assert args.stock_workbook is not None
+        stock_rows = read_first_sheet(args.stock_workbook)
+        stock_source_path = args.stock_workbook
     catalog = {}
     stock = defaultdict(dict)
     for row in stock_rows[2:]:
@@ -376,15 +423,41 @@ def main():
                 platform_pack
             )
 
-    company_qualified_keys = stock_catalog_codes | set(packs)
+    identity_artifact = json.loads(args.identity_map.read_text())
+    qualified_factory_items = {}
+    for item in identity_artifact.get("factory_items", []):
+        if (
+            item.get("company_code") == PLANNING_COMPANY
+            and item.get("sap_schema") == PLANNING_SCHEMA
+            and item.get("state") == "active"
+            and item.get("inventory_uom") == "PCS"
+            and item.get("item_code")
+        ):
+            qualified_key = identity_key(
+                PLANNING_COMPANY, PLANNING_SCHEMA, str(item["item_code"])
+            )
+            qualified_factory_items[qualified_key] = item
+
+    company_qualified_keys = (
+        stock_catalog_codes | set(packs) | set(qualified_factory_items)
+    )
     master_po = unwrap(json.loads(args.master_po.read_text()), "results", "data")
     demand = defaultdict(lambda: {
         "pieces": 0, "poNumbers": set(), "platforms": set(), "locations": set(),
         "nextExpiry": None, "mappingSources": set(), "baseUoms": set(),
         "planningUoms": set(), "perUnits": set(),
     })
-    unresolved = defaultdict(lambda: {"pieces": 0, "poNumbers": set(), "locations": set(), "nextExpiry": None, "skuName": None, "blockers": set()})
+    requirements = defaultdict(lambda: {
+        "pieces": 0, "poNumbers": set(), "platforms": set(), "locations": set(),
+        "baseUoms": set(), "planningUoms": set(), "perUnits": set(),
+    })
+    unresolved = defaultdict(lambda: {
+        "pieces": 0, "poNumbers": set(), "locations": set(), "nextExpiry": None,
+        "skuName": None, "blockers": set(), "requirementPieces": 0,
+        "requirementPoNumbers": set(), "requirementBlockers": set(),
+    })
     seen_lines = {}
+    seen_requirement_lines = {}
 
     for row in master_po:
         identifier = distributor_id(row.get("vendor_new") or row.get("vendor_name"))
@@ -483,6 +556,126 @@ def main():
             if expiry_text and (target["nextExpiry"] is None or expiry_text < target["nextExpiry"]):
                 target["nextExpiry"] = expiry_text
 
+    for row in master_po:
+        identifier = distributor_id(row.get("vendor_new") or row.get("vendor_name"))
+        if not identifier:
+            continue
+        historical = qualify_requirement_po_row(
+            row, requirement_month_start, requirement_month_end
+        )
+        if historical is None or historical["orderQty"] == 0:
+            continue
+
+        platform_key = (
+            str(row.get("format") or "").upper(),
+            str(row.get("sku_code")),
+        )
+        master_product = platform_map.get(platform_key)
+        code = None
+        identity_blocker = None
+        master_unit = ""
+        master_uom = ""
+        po_unit = ""
+        candidate_key = None
+        if not master_product or not master_product.get("sku_sap_code"):
+            identity_blocker = "No exact platform-SKU to SAP-SKU mapping."
+        else:
+            candidate_code = str(master_product["sku_sap_code"])
+            candidate_key = identity_key(
+                PLANNING_COMPANY, PLANNING_SCHEMA, candidate_code
+            )
+            master_unit = normalize_uom(master_product.get("per_unit"))
+            master_uom = normalize_uom(master_product.get("uom"))
+            po_unit = normalize_uom(row.get("unit_of_measure"))
+            if candidate_key not in company_qualified_keys:
+                identity_blocker = (
+                    "SAP SKU is not qualified by the company stock/calculator masters."
+                )
+            elif not master_unit or not master_uom:
+                identity_blocker = "Mapped SKU is missing base-UOM evidence."
+            elif not po_unit:
+                identity_blocker = (
+                    "PO UOM is missing; historical quantity cannot be qualified as pieces."
+                )
+            elif po_unit != master_unit:
+                identity_blocker = "PO UOM conflicts with the exact product-master UOM."
+            else:
+                code = candidate_code
+
+        line_key = (
+            identifier,
+            str(row.get("format") or ""),
+            str(row.get("po_number") or ""),
+            str(row.get("sku_code") or ""),
+            str(row.get("location") or ""),
+        )
+        line_signature = (
+            historical["orderQty"], historical["poDate"], historical["statuses"],
+            code, identity_blocker,
+        )
+        if not accept_deduplicated_line(
+            seen_requirement_lines, line_key, line_signature
+        ):
+            continue
+
+        if code:
+            assert master_product is not None
+            assert candidate_key is not None
+            if candidate_key not in catalog:
+                catalog[candidate_key] = {
+                    "sapCode": code,
+                    "companyCode": PLANNING_COMPANY,
+                    "sapSchema": PLANNING_SCHEMA,
+                    "skuName": str(
+                        master_product.get("item")
+                        or master_product.get("sku_sap_name")
+                        or row.get("sku_name")
+                    ),
+                    "category": str(
+                        master_product.get("variety")
+                        or row.get("category")
+                        or "UNCLASSIFIED"
+                    ),
+                    "subCategory": str(
+                        row.get("sub_category") or "UNCLASSIFIED"
+                    ),
+                    "itemHead": str(
+                        master_product.get("item_head")
+                        or row.get("item_head")
+                        or "UNCLASSIFIED"
+                    ),
+                    "catalogSource": "ecom master products",
+                }
+            catalog[candidate_key].update({
+                "companyCode": PLANNING_COMPANY,
+                "sapSchema": PLANNING_SCHEMA,
+                "baseUom": master_uom,
+                "perUnit": master_unit,
+            })
+            target = requirements[(identifier, candidate_key)]
+            target["pieces"] += historical["orderQty"]
+            target["poNumbers"].add(str(row.get("po_number")))
+            target["platforms"].add(str(row.get("format") or "UNKNOWN"))
+            target["locations"].add(str(row.get("location") or "UNKNOWN"))
+            target["baseUoms"].add(master_uom)
+            target["planningUoms"].add(po_unit)
+            target["perUnits"].add(master_unit)
+        else:
+            key = (
+                identifier,
+                str(row.get("format") or "UNKNOWN"),
+                str(row.get("sku_code") or "UNKNOWN"),
+            )
+            target = unresolved[key]
+            target["requirementPieces"] += historical["orderQty"]
+            target["requirementPoNumbers"].add(str(row.get("po_number")))
+            target["requirementBlockers"].add(
+                identity_blocker or "Requirement identity evidence is incomplete."
+            )
+            target["skuName"] = str(
+                row.get("item") or row.get("sku_name") or "Unmapped PO SKU"
+            )
+
     rows = []
     for identifier, customer_code, distributor_name, *_ in DISTRIBUTORS:
         for qualified_key in sorted(catalog):
@@ -525,6 +718,8 @@ def main():
                 stock_qualified = True
                 stock_status = "qualified-tracker-balance"
             po = demand[(identifier, qualified_key)]
+            requirement = requirements[(identifier, qualified_key)]
+            required_inventory = calculate_required_inventory(requirement["pieces"])
             calculator_pack_values = packs.get(qualified_key, set())
             platform_pack_values = platform_pack_sets.get(qualified_key, set())
             combined_pack_values = calculator_pack_values | platform_pack_values
@@ -559,6 +754,20 @@ def main():
                 "locations": sorted(po["locations"]),
                 "nextPoExpiry": po["nextExpiry"],
                 "poMappingSources": sorted(po["mappingSources"]),
+                "requirementPeriodStart": requirement_month_start.isoformat(),
+                "requirementPeriodEnd": requirement_month_end.isoformat(),
+                "lastMonthPoPieces": requirement["pieces"],
+                "lastMonthPoCount": len(requirement["poNumbers"]),
+                "lastMonthPoNumbers": sorted(requirement["poNumbers"]),
+                "requirementPlatforms": sorted(requirement["platforms"]),
+                "requiredInventoryPieces": required_inventory,
+                "requirementPercent": 80,
+                "requirementQualified": True,
+                "requirementBlocker": None,
+                "requirementPlanningUom": (
+                    next(iter(requirement["planningUoms"]))
+                    if len(requirement["planningUoms"]) == 1 else None
+                ),
                 "companyCode": PLANNING_COMPANY,
                 "sapSchema": PLANNING_SCHEMA,
                 "baseUom": next(iter(po["baseUoms"])) if len(po["baseUoms"]) == 1 else sku.get("baseUom"),
@@ -612,6 +821,20 @@ def main():
             "locations": sorted(value["locations"]),
             "nextPoExpiry": value["nextExpiry"],
             "poMappingSources": [],
+            "requirementPeriodStart": requirement_month_start.isoformat(),
+            "requirementPeriodEnd": requirement_month_end.isoformat(),
+            "lastMonthPoPieces": None,
+            "lastMonthPoCount": len(value["requirementPoNumbers"]),
+            "lastMonthPoNumbers": sorted(value["requirementPoNumbers"]),
+            "requirementPlatforms": [platform],
+            "requiredInventoryPieces": None,
+            "unqualifiedLastMonthPoPieces": value["requirementPieces"],
+            "requirementPercent": 80,
+            "requirementQualified": False,
+            "requirementBlocker": "; ".join(
+                sorted(value["requirementBlockers"] or value["blockers"])
+            ),
+            "requirementPlanningUom": None,
             "planningCutoff": args.planning_as_of,
             "openingPieces": None,
             "billingPieces": None,
@@ -632,7 +855,9 @@ def main():
             "rawNeedPieces": None,
             "recommendedPieces": None,
             "status": "identity-blocked",
-            "blocker": "; ".join(sorted(value["blockers"])),
+            "blocker": "; ".join(
+                sorted(value["blockers"] | value["requirementBlockers"])
+            ),
         })
 
     priority = {"identity-blocked": 0, "blocked": 1, "review": 2, "replenish": 3, "covered": 4, "no-demand": 5}
@@ -650,15 +875,27 @@ def main():
         "recommendedPieces": sum(row["recommendedPieces"] or 0 for row in rows),
         "rowsToReplenish": sum(row["status"] == "replenish" for row in rows),
         "blockedRows": sum(row["status"] in {"blocked", "identity-blocked"} for row in rows),
+        "lastMonthQualifiedPoPieces": sum(
+            row["lastMonthPoPieces"] or 0 for row in rows
+        ),
+        "requiredInventoryPieces": sum(
+            row["requiredInventoryPieces"] or 0 for row in rows
+        ),
+        "unqualifiedLastMonthPoPieces": sum(
+            row.get("unqualifiedLastMonthPoPieces") or 0 for row in rows
+        ),
     }
     output = {
         "planningCutoff": args.planning_as_of,
-        "scope": "Six distributors × union of stock-tracker and open-PO SKUs",
+        "scope": "Six distributors × union of stock-tracker, open-PO, and previous-month PO SKUs",
         "policy": {
             "demand": "PO-only",
             "quantityUnit": "Pieces; exact platform identity and UOM are required, and delivered_qty must equal filled_qty.",
-            "skuUniverse": "Union of distributor stock workbook SKUs and exact-mapped open-PO SKUs; unresolved PO identities remain separate blocker rows.",
+            "skuUniverse": "Union of distributor stock workbook SKUs and exact-mapped open or previous-month PO SKUs; unresolved PO identities remain separate blocker rows.",
             "formula": "max(0, open PO balance - qualified usable stock - confirmed inbound), rounded to qualified case pack",
+            "requirement": "Display target = ceil(80% × non-cancelled PO pieces created in the previous full calendar month)",
+            "requirementPeriodStart": requirement_month_start.isoformat(),
+            "requirementPeriodEnd": requirement_month_end.isoformat(),
             "buffer": "Display-only; zero until separately approved",
             "inTransit": "Only confirmed inbound may offset demand; no confirmed-inbound feed is connected in this snapshot",
             "planningCompany": PLANNING_COMPANY,
@@ -669,7 +906,8 @@ def main():
         "sources": [
             {"name": "ecom master_po", "asOf": None, "mode": "read-only export marked live by connector; source timestamp unavailable", "sha256": file_sha256(args.master_po)},
             {"name": "ecom master products", "companyCode": PLANNING_COMPANY, "sapSchema": PLANNING_SCHEMA, "asOf": None, "mode": "read-only export marked live by connector; source timestamp unavailable", "sha256": file_sha256(args.master_products)},
-            {"name": "DIS. STOCK REPORT.xlsx", "companyCode": PLANNING_COMPANY, "sapSchema": PLANNING_SCHEMA, "asOf": args.stock_as_of, "formula": "BAL = SOH + Billing - GRN", "sha256": file_sha256(args.stock_workbook)},
+            {"name": "Released product identity map", "companyCode": PLANNING_COMPANY, "sapSchema": PLANNING_SCHEMA, "asOf": None, "mode": "active PCS factory identities qualify company/schema item codes", "sha256": file_sha256(args.identity_map)},
+            {"name": "DIS. STOCK REPORT" + (" extracted rows" if args.stock_json else ".xlsx"), "companyCode": PLANNING_COMPANY, "sapSchema": PLANNING_SCHEMA, "asOf": args.stock_as_of, "formula": "BAL = SOH + Billing - GRN", "sha256": file_sha256(stock_source_path)},
             {"name": "Antize Jivo-16 physical count", "companyCode": PLANNING_COMPANY, "sapSchema": PLANNING_SCHEMA, "asOf": args.stock_as_of, "acceptedPieces": 42322, "sha256": file_sha256(antize_source_path)},
             {"name": "Control Panel calculator items", "companyCode": CALCULATOR_COMPANY, "sapSchema": CALCULATOR_SCHEMA, "asOf": None, "mode": "read-only export marked live by connector; excluded from JIVO_MART pack qualification", "sha256": file_sha256(args.calculator_items)},
         ],
