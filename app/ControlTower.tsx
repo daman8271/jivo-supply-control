@@ -75,6 +75,14 @@ type DistributorProjectionRow = {
   status: string;
   openingStatus: string;
 };
+type DistributorSkuMatrixRow = {
+  sapCode: string;
+  itemName: string;
+  itemHead: string;
+  byDistributor: Record<string, DistributorProjectionRow>;
+  currentSoh: number;
+  hasException: boolean;
+};
 type DistributorSummaryRow = Seed["distributorSummary"][number] & {
   asOf?: string;
   sourceFile?: string;
@@ -190,6 +198,7 @@ export function ControlTower({
   const [view, setView] = useState<View>("control");
   const [scope, setScope] = useState<Scope>("premium");
   const [query, setQuery] = useState("");
+  const [distributorQuery, setDistributorQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [dealReservePct, setDealReservePct] = useState(0);
   const [safetyDays, setSafetyDays] = useState(
@@ -298,6 +307,44 @@ export function ControlTower({
       .filter((row) => row.status === "exception")
       .map((row) => ({ ...row, distributor: distributor.name })),
   );
+  const distributorSkuRows = useMemo(() => {
+    const matrix = new Map<string, DistributorSkuMatrixRow>();
+    for (const distributor of distributorRows) {
+      for (const row of distributor.rows ?? []) {
+        const existing = matrix.get(row.sapCode) ?? {
+          sapCode: row.sapCode,
+          itemName: row.itemName,
+          itemHead: row.itemHead,
+          byDistributor: {},
+          currentSoh: 0,
+          hasException: false,
+        };
+        if (existing.itemName === existing.sapCode && row.itemName !== row.sapCode) {
+          existing.itemName = row.itemName;
+          existing.itemHead = row.itemHead;
+        }
+        existing.byDistributor[distributor.id] = row;
+        existing.currentSoh += Math.max(0, row.projectedPieces);
+        existing.hasException ||= row.status === "exception";
+        matrix.set(row.sapCode, existing);
+      }
+    }
+    return [...matrix.values()].sort(
+      (a, b) =>
+        Number(b.hasException) - Number(a.hasException) ||
+        b.currentSoh - a.currentSoh ||
+        a.sapCode.localeCompare(b.sapCode),
+    );
+  }, [distributorRows]);
+  const filteredDistributorSkuRows = useMemo(() => {
+    const normalized = distributorQuery.trim().toLowerCase();
+    if (!normalized) return distributorSkuRows;
+    return distributorSkuRows.filter(
+      (row) =>
+        row.sapCode.toLowerCase().includes(normalized) ||
+        row.itemName.toLowerCase().includes(normalized),
+    );
+  }, [distributorQuery, distributorSkuRows]);
 
   const liveTotals = liveDistributors.totals[scope];
   const augustPoByProduct = useMemo(
@@ -1245,6 +1292,78 @@ export function ControlTower({
                   </p>
                 </article>
               ))}
+            </section>
+            <section className="panel table-panel" aria-labelledby="distributor-sku-soh-title">
+              <PanelHeading
+                eyebrow="Live distributor SOH"
+                title="Current stock by SKU and distributor"
+                action={`${filteredDistributorSkuRows.length} SKUs`}
+              />
+              <div className="table-tools">
+                <input
+                  aria-label="Search distributor SKU stock"
+                  onChange={(event) => setDistributorQuery(event.target.value)}
+                  placeholder="Search SAP code or SKU name"
+                  type="search"
+                  value={distributorQuery}
+                />
+                <span>
+                  Usable SOH in pieces · refreshed {formatObservedAt(liveDistributors.observedAt)}
+                </span>
+              </div>
+              <div className="table-scroll">
+                <table aria-label="Current distributor stock by SKU">
+                  <thead>
+                    <tr>
+                      <th id="distributor-sku-soh-title">SKU</th>
+                      <th>Scope</th>
+                      {distributorRows.map((distributor) => (
+                        <th key={distributor.id}>{distributor.name} SOH</th>
+                      ))}
+                      <th>Network SOH</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredDistributorSkuRows.map((row) => (
+                      <tr key={row.sapCode}>
+                        <td>
+                          <strong title={row.itemName}>{row.itemName}</strong>
+                          <small className="mono">{row.sapCode}</small>
+                        </td>
+                        <td>{row.itemHead}</td>
+                        {distributorRows.map((distributor) => {
+                          const position = row.byDistributor[distributor.id];
+                          const usableSoh = Math.max(0, position?.projectedPieces ?? 0);
+                          return (
+                            <td key={distributor.id}>
+                              <strong>{number.format(usableSoh)}</strong>
+                              <small>
+                                {position
+                                  ? `O ${number.format(position.usableOpeningPieces)} + B ${number.format(position.billingPieces)} − G ${number.format(position.grnPieces)}`
+                                  : "Complete report · zero"}
+                              </small>
+                              {position && position.projectedPieces < 0 && (
+                                <small className="negative-text">
+                                  Projection {number.format(position.projectedPieces)}
+                                </small>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td>
+                          <strong>{number.format(row.currentSoh)}</strong>
+                        </td>
+                        <td>
+                          <span className={row.hasException ? "status-pill need" : "status-pill have"}>
+                            {row.hasException ? "Exception" : "Qualified"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </section>
             <section className="panel table-panel">
               <PanelHeading

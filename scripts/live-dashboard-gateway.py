@@ -271,9 +271,11 @@ def build_distributor_payload(
     baseline_by_id = {row["id"]: row for row in baseline_payload["distributors"]}
     card_to_id = {code: identifier for identifier, (code, _) in TRACKED_DISTRIBUTORS.items()}
     unique_names: dict[str, set[str]] = defaultdict(set)
+    item_by_code: dict[str, dict[str, Any]] = {}
     for item in item_rows:
         code = str(item.get("ItemCode") or "")
         if code.startswith("FG"):
+            item_by_code[code] = item
             unique_names[normalized_item_name(item.get("ItemName"))].add(code)
 
     billing: dict[tuple[str, str], float] = defaultdict(float)
@@ -334,9 +336,10 @@ def build_distributor_payload(
             code for (owner, code) in set(billing) | set(grn) if owner == identifier and code
         }
         for code in movement_codes - set(rows_by_code):
+            item_name = str(item_by_code.get(code, {}).get("ItemName") or code)
             rows_by_code[code] = {
                 "sapCode": code,
-                "itemName": code,
+                "itemName": item_name,
                 "reportedOpeningPieces": 0,
                 "usableOpeningPieces": 0,
                 "openingStatus": "qualified",
