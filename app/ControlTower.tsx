@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   deriveActiveControlActions,
@@ -23,6 +23,40 @@ type View =
   | "readiness";
 type Scope = "premium" | "all";
 type ControlTone = "healthy" | "watch" | "blocked" | "draft";
+type InventoryRow = {
+  sapCode: string;
+  itemName: string;
+  shortName: string;
+  city: string;
+  onHand: number;
+  liters: number;
+  committed: number;
+  available: number;
+  onOrder: number;
+  stockValue: number;
+  status: string;
+};
+type InventoryTotals = {
+  skus: number;
+  onHand: number;
+  liters: number;
+  committed: number;
+  available: number;
+  onOrder: number;
+  stockValue: number;
+  criticalSkus: number;
+  unmappedSkus: number;
+  lowSkus?: number;
+};
+type LiveInventory = {
+  status: "loading" | "live" | "fallback";
+  observedAt: string;
+  source: string;
+  warehouseCode: string;
+  rows: InventoryRow[];
+  totals: InventoryTotals;
+  error?: string;
+};
 
 const number = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 });
@@ -31,6 +65,16 @@ function formatValue(value: number) {
   if (value >= 10_000_000) return `₹${(value / 10_000_000).toFixed(2)} Cr`;
   if (value >= 100_000) return `₹${(value / 100_000).toFixed(1)} L`;
   return `₹${number.format(value)}`;
+}
+
+function formatObservedAt(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Kolkata",
+  }).format(parsed);
 }
 
 const requirements = [
@@ -117,6 +161,51 @@ export function ControlTower({
   const [safetyDays, setSafetyDays] = useState(
     productionPlan.defaultAssumptions.safetyDays,
   );
+  const [liveInventory, setLiveInventory] = useState<LiveInventory>({
+    status: "loading",
+    observedAt: seed.generatedAt,
+    source: "Dated fallback snapshot",
+    warehouseCode: "GP-FGM",
+    rows: seed.jmInventory as InventoryRow[],
+    totals: seed.jmTotals as InventoryTotals,
+  });
+
+  useEffect(() => {
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    async function refreshInventory() {
+      try {
+        const response = await fetch("/api/live/inventory", {
+          cache: "no-store",
+          headers: { accept: "application/json" },
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = (await response.json()) as LiveInventory;
+        if (active) setLiveInventory(payload);
+      } catch (error) {
+        if (active) {
+          setLiveInventory((current) => ({
+            ...current,
+            status: "fallback",
+            error:
+              error instanceof Error ? error.message : "Live inventory unavailable",
+          }));
+        }
+      } finally {
+        if (active) timer = setTimeout(refreshInventory, 60_000);
+      }
+    }
+
+    void refreshInventory();
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, []);
+
+  const inventoryRows = liveInventory.rows;
+  const inventoryTotals = liveInventory.totals;
 
   const liveTotals = seed.liveReconciliation[scope];
   const augustPoByProduct = useMemo(
@@ -237,7 +326,7 @@ export function ControlTower({
 
   const filteredInventory = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return seed.jmInventory.filter((row) => {
+    return inventoryRows.filter((row) => {
       const matchesQuery =
         !normalized ||
         row.sapCode.toLowerCase().includes(normalized) ||
@@ -245,7 +334,7 @@ export function ControlTower({
       const matchesStatus = statusFilter === "All" || row.status === statusFilter;
       return matchesQuery && matchesStatus;
     });
-  }, [query, seed.jmInventory, statusFilter]);
+  }, [query, inventoryRows, statusFilter]);
 
   const maxDistributorBalance = Math.max(
     ...seed.distributorSummary.map((row) =>
@@ -265,7 +354,7 @@ export function ControlTower({
       productionSignals.openPo.planningMonth.planCoverage.calculationBlockedPieces,
     networkProjectedUnits: seed.liveReconciliation.all.projected,
     missingDistributorOpenings,
-    criticalInventorySkus: seed.jmTotals.criticalSkus,
+    criticalInventorySkus: inventoryTotals.criticalSkus,
     productionPieces: productionPlan.totals.productionPieces,
     productionStatus: productionPlan.status,
     materialBlockerCount: materialBlockers.length,
@@ -280,7 +369,7 @@ export function ControlTower({
       productionSignals.openPo.planningMonth.planCoverage.calculationBlockedPieces,
     materialBlockerCount: materialBlockers.length,
     missingDistributorOpenings,
-    criticalInventorySkus: seed.jmTotals.criticalSkus,
+    criticalInventorySkus: inventoryTotals.criticalSkus,
     targetsStatus: productionSignals.targets.status,
   });
   const controlStages: {
@@ -312,7 +401,7 @@ export function ControlTower({
       status: controlStageStates.networkStock.status,
       tone: controlStageStates.networkStock.tone as ControlTone,
       signal: `${number.format(seed.liveReconciliation.all.projected)} projected units`,
-      detail: `${number.format(seed.jmTotals.available)} JM available · ${missingDistributorOpenings} missing openings · ${seed.jmTotals.criticalSkus} critical JM SKUs`,
+      detail: `${number.format(inventoryTotals.available)} JM available · ${missingDistributorOpenings} missing openings · ${inventoryTotals.criticalSkus} critical JM SKUs`,
       target: "replenishment",
     },
     {
@@ -376,7 +465,7 @@ export function ControlTower({
     },
     {
       id: "critical-inventory",
-      title: `Address ${seed.jmTotals.criticalSkus} critical JM SKUs`,
+      title: `Address ${inventoryTotals.criticalSkus} critical JM SKUs`,
       owner: "Inventory planning",
       consequence: "Low or negative availability can put platform PO fulfilment at risk.",
       target: "inventory",
@@ -481,18 +570,30 @@ export function ControlTower({
       <section className="workspace">
         <header className="topbar">
           <div className="topbar-date">
-            <span>{view === "replenishment" ? "Planning cutoff" : "Snapshot"}</span>
+            <span>
+              {view === "inventory"
+                ? liveInventory.status === "live"
+                  ? "Live inventory"
+                  : "Inventory fallback"
+                : view === "replenishment"
+                  ? "Planning cutoff"
+                  : "Snapshot"}
+            </span>
             <strong>
-              {view === "replenishment"
-                ? "24 July 2026 · 17:28 IST"
-                : "24 July 2026 · 15:30 IST"}
+              {view === "inventory"
+                ? formatObservedAt(liveInventory.observedAt)
+                : view === "replenishment"
+                  ? "24 July 2026 · 17:28 IST"
+                  : "24 July 2026 · 15:30 IST"}
             </strong>
           </div>
           <div className="topbar-actions">
             <span className="source-count">
-              {view === "replenishment"
-                ? replenishmentData.sources.length
-                : seed.sourceStatus.length}{" "}
+              {view === "inventory"
+                ? 1
+                : view === "replenishment"
+                  ? replenishmentData.sources.length
+                  : seed.sourceStatus.length}{" "}
               sources
             </span>
             <button
@@ -734,8 +835,8 @@ export function ControlTower({
             <section className="kpi-grid" aria-label="Key inventory metrics">
               <Metric
                 label="JM available"
-                value={number.format(seed.jmTotals.available)}
-                note={`${decimal.format(seed.jmTotals.liters)} estimated litres on hand`}
+                value={number.format(inventoryTotals.available)}
+                note={`${decimal.format(inventoryTotals.liters)} estimated litres on hand`}
                 tone="green"
               />
               <Metric
@@ -746,16 +847,16 @@ export function ControlTower({
               />
               <Metric
                 label="JM committed"
-                value={number.format(seed.jmTotals.committed)}
-                note={`${number.format(seed.jmTotals.onOrder)} units currently on order`}
+                value={number.format(inventoryTotals.committed)}
+                note={`${number.format(inventoryTotals.onOrder)} units currently on order`}
                 tone="cream"
               />
               <Metric
                 label="Open exceptions"
                 value={number.format(
-                  seed.jmTotals.criticalSkus + seed.distributorExceptions.length,
+                  inventoryTotals.criticalSkus + seed.distributorExceptions.length,
                 )}
-                note={`${seed.jmTotals.criticalSkus} JM critical · ${seed.distributorExceptions.length} distributor`}
+                note={`${inventoryTotals.criticalSkus} JM critical · ${seed.distributorExceptions.length} distributor`}
                 tone="amber"
               />
             </section>
@@ -811,7 +912,7 @@ export function ControlTower({
                   action="JM inventory"
                 />
                 <div className="priority-list">
-                  {seed.jmInventory
+                  {inventoryRows
                     .filter((row) => row.available < 0)
                     .sort((a, b) => a.available - b.available)
                     .map((row, index) => (
@@ -875,21 +976,37 @@ export function ControlTower({
             <PageHeading
               eyebrow="JM own inventory"
               title="Available-to-promise stock"
-              description="Current Sonipat warehouse position, with committed quantities separated from physical on-hand stock."
+              description="Live GP-FGM warehouse position from the Ecom SAP feed, with committed quantities separated from physical on-hand stock."
             />
+            <section className="formula-banner" aria-label="Inventory source status">
+              <span>
+                {liveInventory.status === "live"
+                  ? "LIVE · auto-refreshes every 60 seconds"
+                  : liveInventory.status === "loading"
+                    ? "CONNECTING TO LIVE SOURCE"
+                    : "DATED FALLBACK · LIVE SOURCE UNAVAILABLE"}
+              </span>
+              <strong>
+                {liveInventory.warehouseCode} · {liveInventory.source}
+              </strong>
+              <small>
+                Captured {formatObservedAt(liveInventory.observedAt)}
+                {liveInventory.error ? ` · ${liveInventory.error}` : ""}. Source access is read-only.
+              </small>
+            </section>
             <section className="compact-kpis">
-              <CompactMetric label="On hand" value={number.format(seed.jmTotals.onHand)} />
+              <CompactMetric label="On hand" value={number.format(inventoryTotals.onHand)} />
               <CompactMetric
                 label="Available"
-                value={number.format(seed.jmTotals.available)}
+                value={number.format(inventoryTotals.available)}
               />
               <CompactMetric
                 label="On order"
-                value={number.format(seed.jmTotals.onOrder)}
+                value={number.format(inventoryTotals.onOrder)}
               />
               <CompactMetric
                 label="Stock value"
-                value={formatValue(seed.jmTotals.stockValue)}
+                value={formatValue(inventoryTotals.stockValue)}
               />
             </section>
             <section className="panel table-panel">
