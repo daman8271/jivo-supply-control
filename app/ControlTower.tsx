@@ -302,6 +302,7 @@ export function ControlTower({
   const inventoryRows = liveInventory.rows;
   const inventoryTotals = liveInventory.totals;
   const distributorRows = liveDistributors.distributors;
+  const distributorIsLive = liveDistributors.status === "live-projection";
   const distributorExceptions = distributorRows.flatMap((distributor) =>
     (distributor.rows ?? [])
       .filter((row) => row.status === "exception")
@@ -1295,7 +1296,7 @@ export function ControlTower({
             </section>
             <section className="panel table-panel" aria-labelledby="distributor-sku-soh-title">
               <PanelHeading
-                eyebrow="Live distributor SOH"
+                eyebrow={distributorIsLive ? "Live distributor SOH" : "Stale distributor SOH"}
                 title="Current stock by SKU and distributor"
                 action={`${filteredDistributorSkuRows.length} SKUs`}
               />
@@ -1308,7 +1309,9 @@ export function ControlTower({
                   value={distributorQuery}
                 />
                 <span>
-                  Usable SOH in pieces · refreshed {formatObservedAt(liveDistributors.observedAt)}
+                  {distributorIsLive
+                    ? `Live usable SOH in pieces · refreshed ${formatObservedAt(liveDistributors.observedAt)}`
+                    : `STALE — live source unavailable · last successful ${formatObservedAt(liveDistributors.observedAt)}`}
                 </span>
               </div>
               <div className="table-scroll">
@@ -1355,8 +1358,18 @@ export function ControlTower({
                           <strong>{number.format(row.currentSoh)}</strong>
                         </td>
                         <td>
-                          <span className={row.hasException ? "status-pill need" : "status-pill have"}>
-                            {row.hasException ? "Exception" : "Qualified"}
+                          <span
+                            className={
+                              !distributorIsLive || row.hasException
+                                ? "status-pill need"
+                                : "status-pill have"
+                            }
+                          >
+                            {!distributorIsLive
+                              ? "Stale"
+                              : row.hasException
+                                ? "Exception"
+                                : "Qualified"}
                           </span>
                         </td>
                       </tr>
