@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 
 import replenishmentData from "./data/distributor-replenishment.json";
 import {
@@ -16,6 +16,20 @@ import {
 
 type Snapshot = typeof replenishmentData;
 type Row = Snapshot["rows"][number];
+type GroupDetail = {
+  id: string;
+  distributorName: string;
+  sapCode: string | null;
+  identityType: "canonical" | "exact-label-alias" | "unresolved";
+  openPoPieces: number;
+  openPoCount: number;
+  platforms: string[];
+  poNumbers: string[];
+  evidencedStockPieces: number | null;
+  stockStatus: string;
+  status: string;
+  blocker: string | null;
+};
 type GroupedRow = {
   id: string;
   grouped: true;
@@ -26,6 +40,8 @@ type GroupedRow = {
   distributorNames: string[];
   distributorName: string;
   distributorCount: number;
+  rowCount: number;
+  exactLabelAliasRows: number;
   requiredInventoryPieces: number;
   unqualifiedRequirementPieces: number;
   openPoPieces: number;
@@ -40,6 +56,7 @@ type GroupedRow = {
   recommendedPieces: number;
   blockedOpenPoPieces: number;
   status: string;
+  details: GroupDetail[];
 };
 type DisplayRow = (Row & { grouped?: false }) | GroupedRow;
 type StatusFilter = "attention" | "requirement" | "replenish" | "blocked" | "all";
@@ -162,6 +179,7 @@ export default function ReplenishmentWorkbench({
   const [query, setQuery] = useState("");
   const [groupMode, setGroupMode] = useState<GroupMode>("rows");
   const [sort, setSort] = useState<SortState>({ key: "openPo", direction: "desc" });
+  const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
   const selectedDistributorSet = useMemo(
     () => new Set(selectedDistributors),
     [selectedDistributors],
@@ -205,10 +223,18 @@ export default function ReplenishmentWorkbench({
   };
   const setGrouping = (mode: GroupMode) => {
     setGroupMode(mode);
+    setExpandedGroups([]);
     if (mode === "sku") {
       setStatus("all");
       setSort({ key: "openPo", direction: "desc" });
     }
+  };
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups((current) =>
+      current.includes(groupId)
+        ? current.filter((id) => id !== groupId)
+        : [...current, groupId],
+    );
   };
 
   const visibleOpenPo = rows.reduce((sum, row) => sum + row.openPoPieces, 0);
@@ -429,7 +455,7 @@ export default function ReplenishmentWorkbench({
         </header>
 
         <div className="replenishment-visible-summary" aria-live="polite">
-          <span><b>{number.format(rows.length)}</b> visible {groupMode === "sku" ? "SKU groups / unresolved rows" : "rows"}</span>
+          <span><b>{number.format(rows.length)}</b> visible {groupMode === "sku" ? "SKU groups" : "rows"}</span>
           <span><b>{number.format(visibleRequiredInventory)}</b> required inventory pcs</span>
           <span><b>{number.format(visibleOpenPo)}</b> open PO pcs</span>
           <span><b>{number.format(visibleRecommended)}</b> recommended pcs</span>
@@ -453,44 +479,122 @@ export default function ReplenishmentWorkbench({
             </thead>
             <tbody>
               {rows.map((row) => isGroupedRow(row) ? (
-                <tr key={row.id} className={`replenishment-row replenishment-group status-${row.status}`}>
-                  <td>
-                    <strong>{row.skuName}</strong>
-                    <span>{row.sapCode ?? "Unmapped SKU row"}</span>
-                    <small>{row.itemHead} · {row.category}</small>
-                    <small>{row.distributorCount} selected distributor rows</small>
-                  </td>
-                  <td>
-                    <b>{number.format(row.requiredInventoryPieces)}</b>
-                    <span>Qualified inventory target</span>
-                    <small>{number.format(row.unqualifiedRequirementPieces)} historical PO pcs unqualified</small>
-                  </td>
-                  <td>
-                    <b>{number.format(row.openPoPieces)} pieces</b>
-                    <span>{number.format(row.openPoCount)} platform PO orders</span>
-                    <small>{row.platforms.join(", ") || "No mapped platform"}</small>
-                    <small>
-                      PO refs {row.poNumbers.slice(0, 3).join(", ") || "none"}
-                      {row.poNumbers.length > 3 ? ` +${row.poNumbers.length - 3}` : ""}
-                    </small>
-                  </td>
-                  <td>
-                    <b>{number.format(row.qualifiedStockPieces)}</b>
-                    <span>{row.qualifiedStockDistributors}/{row.distributorCount} distributor positions qualified</span>
-                    <small>{row.liveStockDistributors} live · {row.stockExceptionCount} exceptions</small>
-                  </td>
-                  <td>
-                    <span>Raw need {number.format(row.rawNeedPieces)}</span>
-                    <b>Replenish {number.format(row.recommendedPieces)}</b>
-                    <small>{number.format(row.blockedOpenPoPieces)} platform PO pcs blocked by evidence</small>
-                  </td>
-                  <td>
-                    <span className={`replenishment-status ${row.status}`}>
-                      {statusLabels[row.status] ?? row.status}
-                    </span>
-                    <small>{row.distributorNames.join(", ")}</small>
-                  </td>
-                </tr>
+                <Fragment key={row.id}>
+                  <tr className={`replenishment-row replenishment-group status-${row.status}`}>
+                    <td>
+                      <button
+                        type="button"
+                        className="replenishment-group-toggle"
+                        aria-expanded={expandedGroups.includes(row.id)}
+                        aria-controls={`breakdown-${row.id.replaceAll(":", "-")}`}
+                        onClick={() => toggleGroup(row.id)}
+                      >
+                        <span className="replenishment-group-toggle-icon" aria-hidden="true">
+                          {expandedGroups.includes(row.id) ? "−" : "+"}
+                        </span>
+                        <span>
+                          <strong>{row.skuName}</strong>
+                          <small>{row.sapCode ?? "SAP identity unresolved"}</small>
+                        </span>
+                      </button>
+                      <small>{row.itemHead} · {row.category}</small>
+                      <small>{row.distributorCount} distributors · {row.rowCount} underlying rows</small>
+                      {row.exactLabelAliasRows > 0 && (
+                        <small className="replenishment-alias-note">
+                          {row.exactLabelAliasRows} exact-label PO rows included; SAP identity remains flagged
+                        </small>
+                      )}
+                    </td>
+                    <td>
+                      <b>{number.format(row.requiredInventoryPieces)}</b>
+                      <span>Qualified inventory target</span>
+                      <small>{number.format(row.unqualifiedRequirementPieces)} historical PO pcs unqualified</small>
+                    </td>
+                    <td>
+                      <b>{number.format(row.openPoPieces)} pieces</b>
+                      <span>{number.format(row.openPoCount)} platform PO orders</span>
+                      <small>{row.platforms.join(", ") || "No mapped platform"}</small>
+                      <small>
+                        PO refs {row.poNumbers.slice(0, 3).join(", ") || "none"}
+                        {row.poNumbers.length > 3 ? ` +${row.poNumbers.length - 3}` : ""}
+                      </small>
+                    </td>
+                    <td>
+                      <b>{number.format(row.qualifiedStockPieces)}</b>
+                      <span>{row.qualifiedStockDistributors}/{row.distributorCount} distributor positions qualified</span>
+                      <small>{row.liveStockDistributors} live · {row.stockExceptionCount} exceptions</small>
+                    </td>
+                    <td>
+                      <span>Raw need {number.format(row.rawNeedPieces)}</span>
+                      <b>Replenish {number.format(row.recommendedPieces)}</b>
+                      <small>{number.format(row.blockedOpenPoPieces)} platform PO pcs blocked by evidence</small>
+                    </td>
+                    <td>
+                      <span className={`replenishment-status ${row.status}`}>
+                        {statusLabels[row.status] ?? row.status}
+                      </span>
+                      <small>{row.distributorNames.join(", ")}</small>
+                    </td>
+                  </tr>
+                  {expandedGroups.includes(row.id) && (
+                    <tr
+                      id={`breakdown-${row.id.replaceAll(":", "-")}`}
+                      className="replenishment-group-detail-row"
+                    >
+                      <td colSpan={6}>
+                        <div className="replenishment-breakdown-heading">
+                          <strong>{row.skuName} distributor and platform breakdown</strong>
+                          <span>{number.format(row.openPoPieces)} total pieces reconcile to the grouped row</span>
+                        </div>
+                        <div className="replenishment-breakdown-wrap">
+                          <table className="replenishment-breakdown">
+                            <thead>
+                              <tr>
+                                <th>Distributor</th>
+                                <th>Platform</th>
+                                <th>Open PO</th>
+                                <th>Qualified SOH</th>
+                                <th>Identity / status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {row.details.map((detail) => (
+                                <tr key={detail.id}>
+                                  <td><strong>{detail.distributorName}</strong></td>
+                                  <td>{detail.platforms.join(", ") || "Unspecified"}</td>
+                                  <td>
+                                    <strong>{number.format(detail.openPoPieces)} pcs</strong>
+                                    <small>{number.format(detail.openPoCount)} POs</small>
+                                    <small>
+                                      {detail.poNumbers.slice(0, 2).join(", ") || "No PO refs"}
+                                      {detail.poNumbers.length > 2 ? ` +${detail.poNumbers.length - 2}` : ""}
+                                    </small>
+                                  </td>
+                                  <td>
+                                    {detail.evidencedStockPieces === null
+                                      ? "Unqualified"
+                                      : `${number.format(detail.evidencedStockPieces)} pcs`}
+                                    <small>{detail.stockStatus.replaceAll("-", " ")}</small>
+                                  </td>
+                                  <td>
+                                    <span className={`replenishment-status ${detail.status}`}>
+                                      {detail.identityType === "canonical"
+                                        ? "Canonical SAP row"
+                                        : detail.identityType === "exact-label-alias"
+                                          ? "Exact-label demand"
+                                          : "Identity unresolved"}
+                                    </span>
+                                    <small>{detail.sapCode ?? detail.blocker ?? "SAP identity unresolved"}</small>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ) : (
                 <tr key={row.id} className={`replenishment-row status-${row.status}`}>
                   <td>

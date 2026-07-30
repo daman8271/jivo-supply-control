@@ -2491,6 +2491,114 @@ td small {
   box-shadow: inset 3px 0 0 var(--green-2);
 }
 
+.replenishment-group-toggle {
+  display: flex;
+  width: 100%;
+  margin: 0 0 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.replenishment-group-toggle:focus-visible {
+  outline: 3px solid var(--sage);
+  outline-offset: 2px;
+}
+
+.replenishment-group-toggle-icon {
+  display: grid !important;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
+  border: 1px solid var(--green-2);
+  border-radius: 50%;
+  color: var(--green-2);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+  place-items: center;
+}
+
+.replenishment-group-toggle strong,
+.replenishment-group-toggle small {
+  display: block;
+}
+
+.replenishment-alias-note {
+  margin-top: 5px;
+  color: #8a5b12 !important;
+  font-weight: 700;
+}
+
+.replenishment-group-detail-row > td {
+  padding: 0 18px 18px !important;
+  background: #f7f5ed !important;
+  box-shadow: inset 3px 0 0 var(--sage);
+}
+
+.replenishment-breakdown-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+}
+
+.replenishment-breakdown-heading strong,
+.replenishment-breakdown-heading span {
+  display: block;
+}
+
+.replenishment-breakdown-heading span {
+  color: var(--muted);
+}
+
+.replenishment-breakdown-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+.replenishment-table .replenishment-breakdown {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.replenishment-table .replenishment-breakdown th {
+  position: static;
+  width: auto;
+  padding: 9px 11px;
+  background: #eeeadf;
+}
+
+.replenishment-table .replenishment-breakdown td {
+  width: auto;
+  padding: 10px 11px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  overflow: visible;
+}
+
+.replenishment-table .replenishment-breakdown tr:last-child td {
+  border-bottom: 0;
+}
+
+.replenishment-table .replenishment-breakdown tr:hover td {
+  background: #faf8f2;
+}
+
+.replenishment-breakdown td small {
+  margin-top: 3px;
+  color: var(--muted);
+}
+
 .replenishment-table th:nth-child(2) {
   width: 16%;
 }

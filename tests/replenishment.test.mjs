@@ -94,7 +94,7 @@ test("groups SKU rows and ranks aggregate platform PO pieces highest to lowest",
   assert.equal(ranked[1].openPoPieces, 250);
 });
 
-test("does not merge unresolved rows merely because their SKU labels look alike", () => {
+test("groups exact unresolved labels but does not fuzzy-merge lookalikes", () => {
   const unresolved = {
     distributorName: "Distributor",
     skuName: "MUSTARD 1L",
@@ -114,13 +114,80 @@ test("does not merge unresolved rows merely because their SKU labels look alike"
     rawNeedPieces: null,
     recommendedPieces: null,
     status: "identity-blocked",
+    blocker: "SAP identity unresolved",
   };
   const groups = groupReplenishmentRows([
     { ...unresolved, id: "unmapped-a" },
     { ...unresolved, id: "unmapped-b" },
+    { ...unresolved, id: "lookalike", skuName: "MUSTARD 1 L" },
   ]);
   assert.equal(groups.length, 2);
-  assert.ok(groups.every((group) => group.openPoPieces === 100));
+  const exact = groups.find((group) => group.skuName === "MUSTARD 1L");
+  assert.equal(exact.openPoPieces, 200);
+  assert.equal(exact.rowCount, 2);
+});
+
+test("includes exact-label identity blockers in the matching canonical SKU total", () => {
+  const base = {
+    distributorName: "Chirag",
+    skuName: "GROUNDNUT 1L",
+    itemHead: "PREMIUM",
+    category: "GROUNDNUT",
+    requiredInventoryPieces: 0,
+    unqualifiedLastMonthPoPieces: 0,
+    openPoCount: 1,
+    poNumbers: [],
+    platforms: ["SWIGGY"],
+    liveStockApplied: false,
+    rawNeedPieces: null,
+    recommendedPieces: null,
+    blocker: "Evidence blocked",
+  };
+  const [group] = groupReplenishmentRows([
+    {
+      ...base,
+      id: "mapped",
+      sapCode: "FG0000142",
+      openPoPieces: 300,
+      stockQualified: true,
+      stockStatus: "live-projected",
+      evidencedStockPieces: 20,
+      status: "blocked",
+    },
+    {
+      ...base,
+      id: "alias",
+      sapCode: null,
+      openPoPieces: 100,
+      stockQualified: false,
+      stockStatus: "identity-blocked",
+      evidencedStockPieces: null,
+      status: "identity-blocked",
+    },
+  ]);
+  assert.equal(group.sapCode, "FG0000142");
+  assert.equal(group.openPoPieces, 400);
+  assert.equal(group.qualifiedStockPieces, 20);
+  assert.equal(group.exactLabelAliasRows, 1);
+  assert.deepEqual(
+    group.details.map((detail) => detail.identityType),
+    ["canonical", "exact-label-alias"],
+  );
+});
+
+test("full snapshot SKU groups reconcile all mapped and identity-blocked PO demand", () => {
+  const groups = groupReplenishmentRows(snapshot.rows);
+  assert.equal(
+    groups.reduce((sum, group) => sum + group.openPoPieces, 0),
+    snapshot.summary.openPoPieces,
+  );
+  const groundnut = groups.find((group) => group.sapCode === "FG0000142");
+  assert.equal(groundnut.openPoPieces, 72096);
+  assert.equal(groundnut.exactLabelAliasRows, 4);
+  assert.equal(
+    groundnut.details.reduce((sum, detail) => sum + detail.openPoPieces, 0),
+    groundnut.openPoPieces,
+  );
 });
 
 test("distributor selection supports independent multi-select, clear and select all", () => {
