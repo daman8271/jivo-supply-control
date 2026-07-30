@@ -2302,6 +2302,38 @@ td small {
   gap: 5px;
 }
 
+.replenishment-view-toggle {
+  align-self: end;
+  display: flex;
+  min-height: 38px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.replenishment-view-toggle button {
+  padding: 0 11px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.replenishment-view-toggle button.active {
+  background: var(--sage);
+  color: var(--green-2);
+}
+
+.replenishment-view-toggle button:focus-visible {
+  outline: 3px solid var(--sage);
+  outline-offset: 1px;
+}
+
 .replenishment-multi-select {
   display: grid;
   gap: 5px;
@@ -2415,6 +2447,48 @@ td small {
 
 .replenishment-table th:first-child {
   width: 22%;
+}
+
+.replenishment-sort {
+  display: grid;
+  width: 100%;
+  min-height: 34px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.replenishment-sort span {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.replenishment-sort small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.replenishment-sort.active span,
+.replenishment-sort.active small {
+  color: var(--green-2);
+}
+
+.replenishment-sort:focus-visible {
+  outline: 3px solid var(--sage);
+  outline-offset: 2px;
+}
+
+.replenishment-group td:first-child {
+  box-shadow: inset 3px 0 0 var(--green-2);
 }
 
 .replenishment-table th:nth-child(2) {

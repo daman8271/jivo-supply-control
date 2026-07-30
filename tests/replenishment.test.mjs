@@ -5,6 +5,10 @@ import { readFile } from "node:fs/promises";
 import { calculatePoReplenishment } from "../app/lib/replenishment.js";
 import { applyLiveDistributorStock } from "../app/lib/live-replenishment.js";
 import {
+  groupReplenishmentRows,
+  sortReplenishmentRows,
+} from "../app/lib/replenishment-table.js";
+import {
   clearDistributorSelection,
   selectAllDistributors,
   toggleDistributorSelection,
@@ -13,6 +17,111 @@ import {
 const snapshot = JSON.parse(
   await readFile(new URL("../app/data/distributor-replenishment.json", import.meta.url), "utf8"),
 );
+
+test("sorts numeric replenishment columns in both directions with missing values last", () => {
+  const rows = [
+    { id: "a", skuName: "A", distributorName: "One", openPoPieces: 100 },
+    { id: "b", skuName: "B", distributorName: "One", openPoPieces: 300 },
+    { id: "c", skuName: "C", distributorName: "One", openPoPieces: null },
+    { id: "d", skuName: "D", distributorName: "One", openPoPieces: 100 },
+  ];
+  assert.deepEqual(
+    sortReplenishmentRows(rows, { key: "openPo", direction: "desc" }).map((row) => row.id),
+    ["b", "a", "d", "c"],
+  );
+  assert.deepEqual(
+    sortReplenishmentRows(rows, { key: "openPo", direction: "asc" }).map((row) => row.id),
+    ["a", "d", "b", "c"],
+  );
+});
+
+test("supports deterministic sorting for every replenishment header", () => {
+  const rows = [
+    {
+      id: "alpha",
+      skuName: "Alpha",
+      distributorName: "One",
+      requiredInventoryPieces: 10,
+      openPoPieces: 20,
+      evidencedStockPieces: 5,
+      recommendedPieces: 1,
+      status: "blocked",
+    },
+    {
+      id: "beta",
+      skuName: "Beta",
+      distributorName: "Two",
+      requiredInventoryPieces: 30,
+      openPoPieces: 40,
+      evidencedStockPieces: 15,
+      recommendedPieces: 11,
+      status: "covered",
+    },
+  ];
+  assert.equal(sortReplenishmentRows(rows, { key: "identity", direction: "asc" })[0].id, "alpha");
+  for (const key of ["required", "openPo", "stock", "need"]) {
+    assert.equal(sortReplenishmentRows(rows, { key, direction: "desc" })[0].id, "beta", key);
+  }
+  assert.equal(sortReplenishmentRows(rows, { key: "status", direction: "desc" })[0].id, "alpha");
+});
+
+test("groups SKU rows and ranks aggregate platform PO pieces highest to lowest", () => {
+  const base = {
+    itemHead: "PREMIUM",
+    category: "GROUNDNUT",
+    requiredInventoryPieces: 0,
+    unqualifiedRequirementPieces: 0,
+    poNumbers: [],
+    platforms: ["SWIGGY"],
+    stockQualified: true,
+    liveStockApplied: true,
+    stockStatus: "live-projected",
+    rawNeedPieces: null,
+    recommendedPieces: null,
+    status: "blocked",
+  };
+  const groups = groupReplenishmentRows([
+    { ...base, id: "a", distributorName: "Chirag", skuName: "GROUNDNUT 1L", sapCode: "FG1", openPoPieces: 100, openPoCount: 1, evidencedStockPieces: 20 },
+    { ...base, id: "b", distributorName: "Antize", skuName: "GROUNDNUT 1L", sapCode: "FG1", openPoPieces: 300, openPoCount: 2, evidencedStockPieces: 30 },
+    { ...base, id: "c", distributorName: "Baba", skuName: "MUSTARD 1L", sapCode: "FG2", openPoPieces: 250, openPoCount: 4, evidencedStockPieces: 40 },
+  ]);
+  const ranked = sortReplenishmentRows(groups, { key: "openPo", direction: "desc" });
+  assert.equal(ranked[0].sapCode, "FG1");
+  assert.equal(ranked[0].openPoPieces, 400);
+  assert.equal(ranked[0].openPoCount, 3);
+  assert.equal(ranked[0].qualifiedStockPieces, 50);
+  assert.deepEqual(ranked[0].distributorNames, ["Chirag", "Antize"]);
+  assert.equal(ranked[1].openPoPieces, 250);
+});
+
+test("does not merge unresolved rows merely because their SKU labels look alike", () => {
+  const unresolved = {
+    distributorName: "Distributor",
+    skuName: "MUSTARD 1L",
+    sapCode: null,
+    itemHead: "UNMAPPED",
+    category: "UNMAPPED",
+    requiredInventoryPieces: null,
+    unqualifiedLastMonthPoPieces: 0,
+    openPoPieces: 100,
+    openPoCount: 1,
+    poNumbers: [],
+    platforms: ["ZEPTO"],
+    stockQualified: false,
+    liveStockApplied: false,
+    stockStatus: "identity-blocked",
+    evidencedStockPieces: null,
+    rawNeedPieces: null,
+    recommendedPieces: null,
+    status: "identity-blocked",
+  };
+  const groups = groupReplenishmentRows([
+    { ...unresolved, id: "unmapped-a" },
+    { ...unresolved, id: "unmapped-b" },
+  ]);
+  assert.equal(groups.length, 2);
+  assert.ok(groups.every((group) => group.openPoPieces === 100));
+});
 
 test("distributor selection supports independent multi-select, clear and select all", () => {
   const distributors = [{ id: "chirag" }, { id: "antize" }, { id: "evara" }];

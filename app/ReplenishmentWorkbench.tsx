@@ -9,10 +9,44 @@ import {
   toggleDistributorSelection,
 } from "./lib/distributor-selection.js";
 import { applyLiveDistributorStock } from "./lib/live-replenishment.js";
+import {
+  groupReplenishmentRows,
+  sortReplenishmentRows,
+} from "./lib/replenishment-table.js";
 
 type Snapshot = typeof replenishmentData;
 type Row = Snapshot["rows"][number];
+type GroupedRow = {
+  id: string;
+  grouped: true;
+  skuName: string;
+  sapCode: string | null;
+  itemHead: string;
+  category: string;
+  distributorNames: string[];
+  distributorName: string;
+  distributorCount: number;
+  requiredInventoryPieces: number;
+  unqualifiedRequirementPieces: number;
+  openPoPieces: number;
+  openPoCount: number;
+  poNumbers: string[];
+  platforms: string[];
+  qualifiedStockPieces: number;
+  qualifiedStockDistributors: number;
+  liveStockDistributors: number;
+  stockExceptionCount: number;
+  rawNeedPieces: number;
+  recommendedPieces: number;
+  blockedOpenPoPieces: number;
+  status: string;
+};
+type DisplayRow = (Row & { grouped?: false }) | GroupedRow;
 type StatusFilter = "attention" | "requirement" | "replenish" | "blocked" | "all";
+type SortKey = "identity" | "required" | "openPo" | "stock" | "need" | "status";
+type SortDirection = "asc" | "desc";
+type GroupMode = "rows" | "sku";
+type SortState = { key: SortKey; direction: SortDirection };
 type LiveProjection = {
   status: string;
   observedAt: string;
@@ -81,6 +115,41 @@ function matchesStatus(row: Row, status: StatusFilter) {
   );
 }
 
+function isGroupedRow(row: DisplayRow): row is GroupedRow {
+  return row.grouped === true;
+}
+
+function SortableHeader({
+  label,
+  sortKey,
+  sort,
+  onSort,
+}: {
+  label: string;
+  sortKey: SortKey;
+  sort: SortState;
+  onSort: (key: SortKey) => void;
+}) {
+  const active = sort.key === sortKey;
+  const directionLabel = !active
+    ? "Sort"
+    : sort.direction === "desc"
+      ? sortKey === "identity" ? "Z → A" : "High → low"
+      : sortKey === "identity" ? "A → Z" : "Low → high";
+  return (
+    <th aria-sort={active ? (sort.direction === "desc" ? "descending" : "ascending") : "none"}>
+      <button
+        className={`replenishment-sort ${active ? "active" : ""}`}
+        type="button"
+        onClick={() => onSort(sortKey)}
+      >
+        <span>{label}</span>
+        <small>{active ? (sort.direction === "desc" ? "↓" : "↑") : "↕"} {directionLabel}</small>
+      </button>
+    </th>
+  );
+}
+
 export default function ReplenishmentWorkbench({
   liveDistributors,
 }: {
@@ -91,6 +160,8 @@ export default function ReplenishmentWorkbench({
   );
   const [status, setStatus] = useState<StatusFilter>("attention");
   const [query, setQuery] = useState("");
+  const [groupMode, setGroupMode] = useState<GroupMode>("rows");
+  const [sort, setSort] = useState<SortState>({ key: "openPo", direction: "desc" });
   const selectedDistributorSet = useMemo(
     () => new Set(selectedDistributors),
     [selectedDistributors],
@@ -106,7 +177,7 @@ export default function ReplenishmentWorkbench({
     );
   };
 
-  const rows = useMemo(() => {
+  const filteredRows = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return canonicalRows.filter((row) => {
       if (!selectedDistributorSet.has(row.distributorId)) return false;
@@ -117,6 +188,28 @@ export default function ReplenishmentWorkbench({
         .some((value) => String(value).toLowerCase().includes(normalized));
     });
   }, [canonicalRows, query, selectedDistributorSet, status]);
+  const rows = useMemo<DisplayRow[]>(() => {
+    const displayRows = groupMode === "sku"
+      ? groupReplenishmentRows(filteredRows)
+      : filteredRows;
+    return sortReplenishmentRows(displayRows, sort) as DisplayRow[];
+  }, [filteredRows, groupMode, sort]);
+
+  const toggleSort = (key: SortKey) => {
+    setSort((current) => ({
+      key,
+      direction: current.key === key
+        ? (current.direction === "desc" ? "asc" : "desc")
+        : (key === "identity" ? "asc" : "desc"),
+    }));
+  };
+  const setGrouping = (mode: GroupMode) => {
+    setGroupMode(mode);
+    if (mode === "sku") {
+      setStatus("all");
+      setSort({ key: "openPo", direction: "desc" });
+    }
+  };
 
   const visibleOpenPo = rows.reduce((sum, row) => sum + row.openPoPieces, 0);
   const visibleRecommended = rows.reduce(
@@ -124,7 +217,10 @@ export default function ReplenishmentWorkbench({
     0,
   );
   const visibleBlocked = rows.reduce(
-    (sum, row) => sum + (row.recommendedPieces === null ? row.openPoPieces : 0),
+    (sum, row) =>
+      sum + (isGroupedRow(row)
+        ? row.blockedOpenPoPieces
+        : (row.recommendedPieces === null ? row.openPoPieces : 0)),
     0,
   );
   const visibleRequiredInventory = rows.reduce(
@@ -272,6 +368,24 @@ export default function ReplenishmentWorkbench({
             <h2 id="sku-matrix-title">SKU replenishment matrix</h2>
           </div>
           <div className="replenishment-filters">
+            <div className="replenishment-view-toggle" role="group" aria-label="Table grouping">
+              <button
+                aria-pressed={groupMode === "rows"}
+                className={groupMode === "rows" ? "active" : ""}
+                type="button"
+                onClick={() => setGrouping("rows")}
+              >
+                Distributor rows
+              </button>
+              <button
+                aria-pressed={groupMode === "sku"}
+                className={groupMode === "sku" ? "active" : ""}
+                type="button"
+                onClick={() => setGrouping("sku")}
+              >
+                Group by SKU
+              </button>
+            </div>
             <div
               className="replenishment-multi-select"
               role="group"
@@ -315,7 +429,7 @@ export default function ReplenishmentWorkbench({
         </header>
 
         <div className="replenishment-visible-summary" aria-live="polite">
-          <span><b>{number.format(rows.length)}</b> visible rows</span>
+          <span><b>{number.format(rows.length)}</b> visible {groupMode === "sku" ? "SKU groups / unresolved rows" : "rows"}</span>
           <span><b>{number.format(visibleRequiredInventory)}</b> required inventory pcs</span>
           <span><b>{number.format(visibleOpenPo)}</b> open PO pcs</span>
           <span><b>{number.format(visibleRecommended)}</b> recommended pcs</span>
@@ -329,16 +443,55 @@ export default function ReplenishmentWorkbench({
             </caption>
             <thead>
               <tr>
-                <th>Distributor / SKU</th>
-                <th>Required inventory</th>
-                <th>Open PO balance</th>
-                <th>Stock / inbound</th>
-                <th>Need / replenish</th>
-                <th>Status / evidence</th>
+                <SortableHeader label={groupMode === "sku" ? "SKU group" : "Distributor / SKU"} sortKey="identity" sort={sort} onSort={toggleSort} />
+                <SortableHeader label="Required inventory" sortKey="required" sort={sort} onSort={toggleSort} />
+                <SortableHeader label="Platform PO orders" sortKey="openPo" sort={sort} onSort={toggleSort} />
+                <SortableHeader label="Stock / inbound" sortKey="stock" sort={sort} onSort={toggleSort} />
+                <SortableHeader label="Need / replenish" sortKey="need" sort={sort} onSort={toggleSort} />
+                <SortableHeader label="Status / evidence" sortKey="status" sort={sort} onSort={toggleSort} />
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
+              {rows.map((row) => isGroupedRow(row) ? (
+                <tr key={row.id} className={`replenishment-row replenishment-group status-${row.status}`}>
+                  <td>
+                    <strong>{row.skuName}</strong>
+                    <span>{row.sapCode ?? "Unmapped SKU row"}</span>
+                    <small>{row.itemHead} · {row.category}</small>
+                    <small>{row.distributorCount} selected distributor rows</small>
+                  </td>
+                  <td>
+                    <b>{number.format(row.requiredInventoryPieces)}</b>
+                    <span>Qualified inventory target</span>
+                    <small>{number.format(row.unqualifiedRequirementPieces)} historical PO pcs unqualified</small>
+                  </td>
+                  <td>
+                    <b>{number.format(row.openPoPieces)} pieces</b>
+                    <span>{number.format(row.openPoCount)} platform PO orders</span>
+                    <small>{row.platforms.join(", ") || "No mapped platform"}</small>
+                    <small>
+                      PO refs {row.poNumbers.slice(0, 3).join(", ") || "none"}
+                      {row.poNumbers.length > 3 ? ` +${row.poNumbers.length - 3}` : ""}
+                    </small>
+                  </td>
+                  <td>
+                    <b>{number.format(row.qualifiedStockPieces)}</b>
+                    <span>{row.qualifiedStockDistributors}/{row.distributorCount} distributor positions qualified</span>
+                    <small>{row.liveStockDistributors} live · {row.stockExceptionCount} exceptions</small>
+                  </td>
+                  <td>
+                    <span>Raw need {number.format(row.rawNeedPieces)}</span>
+                    <b>Replenish {number.format(row.recommendedPieces)}</b>
+                    <small>{number.format(row.blockedOpenPoPieces)} platform PO pcs blocked by evidence</small>
+                  </td>
+                  <td>
+                    <span className={`replenishment-status ${row.status}`}>
+                      {statusLabels[row.status] ?? row.status}
+                    </span>
+                    <small>{row.distributorNames.join(", ")}</small>
+                  </td>
+                </tr>
+              ) : (
                 <tr key={row.id} className={`replenishment-row status-${row.status}`}>
                   <td>
                     <strong>{row.skuName}</strong>
