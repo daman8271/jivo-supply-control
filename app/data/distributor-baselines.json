@@ -1,0 +1,741 @@
+{
+  "generatedAt": "2026-07-30T16:12:54.121352+00:00",
+  "formula": "Projected distributor stock = qualified physical opening + SAP billing after cutoff - mapped platform GRN after cutoff",
+  "distributors": [
+    {
+      "id": "antize",
+      "code": "CUSTA000927",
+      "name": "Antize Foods",
+      "asOf": "2026-07-28",
+      "sourceFile": "doc_e978f8c68cf6_JIVO-INV-28.xlsx",
+      "sourceSha256": "2108248b9cf9453766ff3f585ff98a9e82c21ae0bc1f525afe4987912b2d59d0",
+      "completeReport": true,
+      "reportedOpeningPieces": 26457,
+      "usableOpeningPieces": 26457,
+      "negativeOpeningSkus": 0,
+      "rows": [
+        {
+          "sapCode": "FG0000004",
+          "itemName": "JIVO COLD PRESSED CANOLA OIL-5LTR",
+          "reportedOpeningPieces": 556,
+          "usableOpeningPieces": 556,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000005",
+          "itemName": "JIVO EXTRA LIGHT OLIVE OIL-1LTR",
+          "reportedOpeningPieces": 1399,
+          "usableOpeningPieces": 1399,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000008",
+          "itemName": "JIVO POMACE OLIVE OIL (5LTR) TIN",
+          "reportedOpeningPieces": 1030,
+          "usableOpeningPieces": 1030,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000009",
+          "itemName": "JIVO EXTRA LIGHT OLIVE OIL (5 LTR) TIN",
+          "reportedOpeningPieces": 0,
+          "usableOpeningPieces": 0,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000011",
+          "itemName": "JIVO COLD PRESSED KACHI GHANI MUSTARD OIL (5LTR CANE )",
+          "reportedOpeningPieces": 142,
+          "usableOpeningPieces": 142,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000015",
+          "itemName": "JIVO REFIND OIL 15 LTR",
+          "reportedOpeningPieces": 0,
+          "usableOpeningPieces": 0,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000028",
+          "itemName": "JIVO POMACE OLIVE OIL  (1LTR)",
+          "reportedOpeningPieces": 3129,
+          "usableOpeningPieces": 3129,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000030",
+          "itemName": "JIVO COLD PRESS KACHI GHANI MUSTARD OIL (1LTR )",
+          "reportedOpeningPieces": 7756,
+          "usableOpeningPieces": 7756,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000032",
+          "itemName": "JIVO COLD PRESSED  CANOLA OIL 1LTR",
+          "reportedOpeningPieces": 3780,
+          "usableOpeningPieces": 3780,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000042",
+          "itemName": "JIVO EXTRA VIRGIN OLIVE OIL (1LTR )",
+          "reportedOpeningPieces": 380,
+          "usableOpeningPieces": 380,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000064",
+          "itemName": "JIVO EXTRA LIGHT OLIVE OIL-2 LTR-10",
+          "reportedOpeningPieces": 1440,
+          "usableOpeningPieces": 1440,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000074",
+          "itemName": "JIVO EXTRA VIRGIN OLIVE OIL (5 LTR TIN)",
+          "reportedOpeningPieces": 0,
+          "usableOpeningPieces": 0,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000081",
+          "itemName": "JIVO COLD PRESSED SUNFLOWER OIL (1LTR)",
+          "reportedOpeningPieces": 2804,
+          "usableOpeningPieces": 2804,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000088",
+          "itemName": "JIVO COLD PRESS CANOLA OIL (1LTR)COMBO",
+          "reportedOpeningPieces": 850,
+          "usableOpeningPieces": 850,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000114",
+          "itemName": "JIVO POMACE OLIVE OIL  (2LTR)",
+          "reportedOpeningPieces": 102,
+          "usableOpeningPieces": 102,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000142",
+          "itemName": "JIVO COLD PRESSED GROUNDNUT (1LTR)",
+          "reportedOpeningPieces": 0,
+          "usableOpeningPieces": 0,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000164",
+          "itemName": "JIVO EXTRA VIRGIN OLIVE (200MLS)",
+          "reportedOpeningPieces": 407,
+          "usableOpeningPieces": 407,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000393",
+          "itemName": "JIVO COLD PRESSED GROUNDNUT OIL 200 ML",
+          "reportedOpeningPieces": 2682,
+          "usableOpeningPieces": 2682,
+          "openingStatus": "qualified"
+        }
+      ]
+    },
+    {
+      "id": "chirag",
+      "code": "CUSTA000354",
+      "name": "Chirag Enterprises Mumbai",
+      "asOf": "2026-07-29",
+      "sourceFile": "doc_775b448f6c96_STOCK_AND_SALES_STATEMENT-29 07 26-Administrator_GRP.xlsx",
+      "sourceSha256": "e2ef095874180cb2b888e5c8996903a8ab5a89bf1bfbe1caf5b328b87ddd2dc4",
+      "completeReport": true,
+      "reportedOpeningPieces": 28051,
+      "usableOpeningPieces": 28263,
+      "negativeOpeningSkus": 2,
+      "rows": [
+        {
+          "sapCode": "FG0000004",
+          "itemName": "E JIVO CANOLA OIL PLAIN (5 LTR)",
+          "reportedOpeningPieces": 211,
+          "usableOpeningPieces": 211,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000005",
+          "itemName": "E JIVO EXTRA LIGHT OLIVE OIL (1 LTR",
+          "reportedOpeningPieces": 652,
+          "usableOpeningPieces": 652,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000008",
+          "itemName": "E JIVO POMACE OLIVE OIL (5 LTR)",
+          "reportedOpeningPieces": 517,
+          "usableOpeningPieces": 517,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000009",
+          "itemName": "E JIVO EXTRA LIGHT OLIVE OIL (5 LTR",
+          "reportedOpeningPieces": 41,
+          "usableOpeningPieces": 41,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000011",
+          "itemName": "E JIVO MUSTARD OIL (5 LTR)",
+          "reportedOpeningPieces": 149,
+          "usableOpeningPieces": 149,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000018",
+          "itemName": "E JIVO CANOLA 5LTR+1LTR COMBO",
+          "reportedOpeningPieces": 9,
+          "usableOpeningPieces": 9,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000028",
+          "itemName": "E JIVO POMACE OLIVE OIL (1 LTR)",
+          "reportedOpeningPieces": 1215,
+          "usableOpeningPieces": 1215,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000030",
+          "itemName": "E JIVO MUSTARD OIL (1 LTR)",
+          "reportedOpeningPieces": 4582,
+          "usableOpeningPieces": 4582,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000032",
+          "itemName": "E JIVO CANOLA OIL PLAIN (1 LTR)",
+          "reportedOpeningPieces": 92,
+          "usableOpeningPieces": 92,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000042",
+          "itemName": "E JIVO XTRA VIRGIN OLIVE OIL (1 LTR",
+          "reportedOpeningPieces": 222,
+          "usableOpeningPieces": 222,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000053",
+          "itemName": "E JIVO SUNFLOWER OIL (5 LTR)",
+          "reportedOpeningPieces": -146,
+          "usableOpeningPieces": 0,
+          "openingStatus": "negative-report-exception"
+        },
+        {
+          "sapCode": "FG0000064",
+          "itemName": "E JIVO EXTRA LIGHT OLIVE OIL (2 LTR",
+          "reportedOpeningPieces": 265,
+          "usableOpeningPieces": 265,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000074",
+          "itemName": "E JIVO XTRA VIRGIN OLIVE OIL (5 LTR",
+          "reportedOpeningPieces": 13,
+          "usableOpeningPieces": 13,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000081",
+          "itemName": "E JIVO SUNFLOWER OIL (1 LTR)",
+          "reportedOpeningPieces": 6354,
+          "usableOpeningPieces": 6354,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000088",
+          "itemName": "E JIVO CANOLA OIL (1LTR+1LTR)",
+          "reportedOpeningPieces": 220,
+          "usableOpeningPieces": 220,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000112",
+          "itemName": "E JIVO XTRA VIRGIN OLIVE OIL (250 M",
+          "reportedOpeningPieces": 0,
+          "usableOpeningPieces": 0,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000114",
+          "itemName": "E JIVO POMACE OLIVE OIL (2 LTR)",
+          "reportedOpeningPieces": 16,
+          "usableOpeningPieces": 16,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000128",
+          "itemName": "E JIVO GOLD OIL (5 LTR)",
+          "reportedOpeningPieces": -66,
+          "usableOpeningPieces": 0,
+          "openingStatus": "negative-report-exception"
+        },
+        {
+          "sapCode": "FG0000142",
+          "itemName": "E JIVO GROUNDNUT OIL (1 LTR)",
+          "reportedOpeningPieces": 3619,
+          "usableOpeningPieces": 3619,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000143",
+          "itemName": "E JIVO GROUNDNUT OIL (5 LTR)",
+          "reportedOpeningPieces": 204,
+          "usableOpeningPieces": 204,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000149",
+          "itemName": "E JIVO GOLD OIL (1 LTR)",
+          "reportedOpeningPieces": 101,
+          "usableOpeningPieces": 101,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000150",
+          "itemName": "E SANO POMACE OLIVE OIL (1 LTR)",
+          "reportedOpeningPieces": 1956,
+          "usableOpeningPieces": 1956,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000151",
+          "itemName": "E SANO POMACE OLIVE OIL (5 LTR)",
+          "reportedOpeningPieces": 397,
+          "usableOpeningPieces": 397,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000164",
+          "itemName": "E JIVO XTRA VIRGIN OLIVE OIL (200 M",
+          "reportedOpeningPieces": 35,
+          "usableOpeningPieces": 35,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000192",
+          "itemName": "E JIVO SOYABEAN OIL (5 LTR)",
+          "reportedOpeningPieces": 42,
+          "usableOpeningPieces": 42,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000193",
+          "itemName": "E JIVO SOYABEAN OIL (1 LTR)",
+          "reportedOpeningPieces": 213,
+          "usableOpeningPieces": 213,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000223",
+          "itemName": "E JIVO DESI GHEE (1 LTR)",
+          "reportedOpeningPieces": 180,
+          "usableOpeningPieces": 180,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000227",
+          "itemName": "E JIVO RICE BRAN OIL (1 LTR)",
+          "reportedOpeningPieces": 412,
+          "usableOpeningPieces": 412,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000228",
+          "itemName": "E JIVO SO OLIVE OIL (1 LTR)",
+          "reportedOpeningPieces": 249,
+          "usableOpeningPieces": 249,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000229",
+          "itemName": "E JIVO SO OLIVE OIL (5 LTR)",
+          "reportedOpeningPieces": 12,
+          "usableOpeningPieces": 12,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000230",
+          "itemName": "E JIVO RICE BRAN OIL (5LTR)",
+          "reportedOpeningPieces": 76,
+          "usableOpeningPieces": 76,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000244",
+          "itemName": "JIVO MOJITO WHEAT GRASS JUICE",
+          "reportedOpeningPieces": 11,
+          "usableOpeningPieces": 11,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000250",
+          "itemName": "JIVO MOJITO SUGAR FREE GLASS JUICE",
+          "reportedOpeningPieces": 0,
+          "usableOpeningPieces": 0,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000251",
+          "itemName": "JIVO APPLE SUGAR FREE GLASS BOTTLE",
+          "reportedOpeningPieces": 0,
+          "usableOpeningPieces": 0,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000252",
+          "itemName": "JIVO TONIC WATER GLASS BOTTLE",
+          "reportedOpeningPieces": 108,
+          "usableOpeningPieces": 108,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000258",
+          "itemName": "JIVO APPLE GLASS BOTTLE",
+          "reportedOpeningPieces": 36,
+          "usableOpeningPieces": 36,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000260",
+          "itemName": "JIVO BLUEBERRY GLASS BOTTLE",
+          "reportedOpeningPieces": 0,
+          "usableOpeningPieces": 0,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000262",
+          "itemName": "JIVO MANGO WHEAT GRASS JUICE",
+          "reportedOpeningPieces": 96,
+          "usableOpeningPieces": 96,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000263",
+          "itemName": "JIVO ROSE WHEAT GRASS JUICE",
+          "reportedOpeningPieces": 48,
+          "usableOpeningPieces": 48,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000266",
+          "itemName": "JIVO NATURAL MINERAL WATER (1 LTR)",
+          "reportedOpeningPieces": 30,
+          "usableOpeningPieces": 30,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000276",
+          "itemName": "JIVO GINGER SUGAR FREE JUICE",
+          "reportedOpeningPieces": 12,
+          "usableOpeningPieces": 12,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000279",
+          "itemName": "JIVO MANGO WHEAT GRASS JUICE",
+          "reportedOpeningPieces": 6,
+          "usableOpeningPieces": 6,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000280",
+          "itemName": "JIVO LEMON SODA PET BOTTLE",
+          "reportedOpeningPieces": 61,
+          "usableOpeningPieces": 61,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000281",
+          "itemName": "JIVO PEACH SODA PET BOTTLE",
+          "reportedOpeningPieces": 63,
+          "usableOpeningPieces": 63,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000293",
+          "itemName": "JIVO JEERA SUGARY JUICE",
+          "reportedOpeningPieces": 216,
+          "usableOpeningPieces": 216,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000302",
+          "itemName": "E JIVO MUSTARD OIL (4 LTR)",
+          "reportedOpeningPieces": 0,
+          "usableOpeningPieces": 0,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000303",
+          "itemName": "E JIVO SUNFLOWER OIL(4 LTR)",
+          "reportedOpeningPieces": 1,
+          "usableOpeningPieces": 1,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000309",
+          "itemName": "JIVO JUMP ENERGY DRINK SUGAR FREE G",
+          "reportedOpeningPieces": 96,
+          "usableOpeningPieces": 96,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000328",
+          "itemName": "E JIVO YELLOW MUSTARD OIL",
+          "reportedOpeningPieces": 241,
+          "usableOpeningPieces": 241,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000363",
+          "itemName": "JIVO BLUEBERRY SUGAR FREE",
+          "reportedOpeningPieces": 0,
+          "usableOpeningPieces": 0,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000375",
+          "itemName": "JIVO JEERA SUGAR FREE",
+          "reportedOpeningPieces": 84,
+          "usableOpeningPieces": 84,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000376",
+          "itemName": "E JIVO SESAME OIL",
+          "reportedOpeningPieces": 130,
+          "usableOpeningPieces": 130,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000393",
+          "itemName": "E JIVO GROUNDNUT OIL (200 ML)",
+          "reportedOpeningPieces": 4970,
+          "usableOpeningPieces": 4970,
+          "openingStatus": "qualified"
+        }
+      ]
+    },
+    {
+      "id": "baba",
+      "code": "CUSTA000900",
+      "name": "Baba Lokenath Traders",
+      "asOf": "2026-07-30",
+      "sourceFile": "doc_c7a94cec5440_Stock Report Jivo as on 30.07.2026.xlsx",
+      "sourceSha256": "87367fe3db2b1a07c2343c8ec3cb86d55060815876c84dcfb380387c4d46532f",
+      "completeReport": true,
+      "reportedOpeningPieces": 31647,
+      "usableOpeningPieces": 31647,
+      "negativeOpeningSkus": 0,
+      "rows": [
+        {
+          "sapCode": "FG0000004",
+          "itemName": "JIVO COLD PRESS CANOLA OIL (5LTRX4PCS)",
+          "reportedOpeningPieces": 32,
+          "usableOpeningPieces": 32,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000005",
+          "itemName": "JIVO EXTRA LIGHT OLIVE (16X1LTR)",
+          "reportedOpeningPieces": 402,
+          "usableOpeningPieces": 402,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000008",
+          "itemName": "POMACE OLIVE OIL (5LTRX4PCS)",
+          "reportedOpeningPieces": 133,
+          "usableOpeningPieces": 133,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000009",
+          "itemName": "JIVO EXTRA LIGHT OLIVE (5LTRX 4PCS)",
+          "reportedOpeningPieces": 72,
+          "usableOpeningPieces": 72,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000011",
+          "itemName": "JIVO MUSTARD KACHHI GHANI (4X5LTR)",
+          "reportedOpeningPieces": 72,
+          "usableOpeningPieces": 72,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000028",
+          "itemName": "POMACE OLIVE OIL (16X1LTR)",
+          "reportedOpeningPieces": 732,
+          "usableOpeningPieces": 732,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000030",
+          "itemName": "JIVO MUSTARD KACHHI GHANI (20X1LTR)",
+          "reportedOpeningPieces": 13932,
+          "usableOpeningPieces": 13932,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000032",
+          "itemName": "JIVO COLD PRESS CANOLA OIL (1LTRX20PCS)",
+          "reportedOpeningPieces": 200,
+          "usableOpeningPieces": 200,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000042",
+          "itemName": "JIVO EXTRA VIRGIN OLIVE OIL (16X1LTR)",
+          "reportedOpeningPieces": 669,
+          "usableOpeningPieces": 669,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000064",
+          "itemName": "JIVO EXTRA LIGHT OLIVE (2LTR X 10PCS)",
+          "reportedOpeningPieces": 320,
+          "usableOpeningPieces": 320,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000074",
+          "itemName": "JIVO EXTRA VIRGIN OLIVE OIL (5LTRX4PCS)TIN IMPORTED",
+          "reportedOpeningPieces": 32,
+          "usableOpeningPieces": 32,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000081",
+          "itemName": "JIVO COLD PRESS SUNFLOWER (20X1LTR)",
+          "reportedOpeningPieces": 1900,
+          "usableOpeningPieces": 1900,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000106",
+          "itemName": "JIVO MUSTARD KACHHI GHANI (12X1LTR) POUCH",
+          "reportedOpeningPieces": 3012,
+          "usableOpeningPieces": 3012,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000109",
+          "itemName": "JIVO COLD PRESS SOYABEAN OIL(1LTRX12PCS)",
+          "reportedOpeningPieces": 1206,
+          "usableOpeningPieces": 1206,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000114",
+          "itemName": "POMACE OLIVE OIL (2LTR X 10PCS)",
+          "reportedOpeningPieces": 269,
+          "usableOpeningPieces": 269,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000128",
+          "itemName": "JIVO GOLD (5LTR X 4PCS)",
+          "reportedOpeningPieces": 136,
+          "usableOpeningPieces": 136,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000142",
+          "itemName": "JIVO COLD PRESS GROUNDNUT OIL (16X1LTR)",
+          "reportedOpeningPieces": 4368,
+          "usableOpeningPieces": 4368,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000143",
+          "itemName": "JIVO COLD PRESS GROUNDNUT OIL (4X5LTR)",
+          "reportedOpeningPieces": 443,
+          "usableOpeningPieces": 443,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000149",
+          "itemName": "JIVO GOLD (1LTRX 20PCS)",
+          "reportedOpeningPieces": 1280,
+          "usableOpeningPieces": 1280,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000150",
+          "itemName": "SANO POMACE OLIVE OIL (16X1LTR)",
+          "reportedOpeningPieces": 480,
+          "usableOpeningPieces": 480,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000151",
+          "itemName": "SANO POMACE OLIVE OIL (5 LTR X4PCS)",
+          "reportedOpeningPieces": 40,
+          "usableOpeningPieces": 40,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000227",
+          "itemName": "JIVO RICE BRAN OIL (16X1LTR)",
+          "reportedOpeningPieces": 16,
+          "usableOpeningPieces": 16,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000228",
+          "itemName": "JIVO SO OLIVE OIL(1LTR X16PCS)",
+          "reportedOpeningPieces": 320,
+          "usableOpeningPieces": 320,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000230",
+          "itemName": "JIVO RICE BRAN OIL (5LTRX4PCS)",
+          "reportedOpeningPieces": 36,
+          "usableOpeningPieces": 36,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000328",
+          "itemName": "JIVO YELLOW MUSTARD (1LTRX20PCS)",
+          "reportedOpeningPieces": 664,
+          "usableOpeningPieces": 664,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000376",
+          "itemName": "JIVO SESAME OIL (20X1LTR)",
+          "reportedOpeningPieces": 785,
+          "usableOpeningPieces": 785,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000402",
+          "itemName": "JIVO COLD PRESS SUNFLOWER (24X1LTR)",
+          "reportedOpeningPieces": 72,
+          "usableOpeningPieces": 72,
+          "openingStatus": "qualified"
+        },
+        {
+          "sapCode": "FG0000421",
+          "itemName": "JIVO COLD PRESS CANOLA OIL (1LTRX24 PCS)",
+          "reportedOpeningPieces": 24,
+          "usableOpeningPieces": 24,
+          "openingStatus": "qualified"
+        }
+      ]
+    }
+  ]
+}

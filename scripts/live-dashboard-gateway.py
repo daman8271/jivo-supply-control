@@ -17,7 +17,9 @@ import tomllib
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
+from datetime import date, datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -26,6 +28,13 @@ CONFIG_PATH = Path.home() / ".config/jivo-ecom-pp-cli/config.toml"
 WAREHOUSE_CODE = "GP-FGM"
 WAREHOUSE_NAME = "GUPTA FINISHED GOODS MART"
 CACHE_SECONDS = 30
+DISTRIBUTOR_CACHE_SECONDS = 300
+BASELINES_PATH = Path(__file__).parents[1] / "app/data/distributor-baselines.json"
+TRACKED_DISTRIBUTORS = {
+    "antize": ("CUSTA000927", "ANTIZE"),
+    "chirag": ("CUSTA000354", "CHIRAG"),
+    "baba": ("CUSTA000900", "BABA LOKENATH"),
+}
 HOP_BY_HOP_HEADERS = {
     "connection",
     "keep-alive",
@@ -39,6 +48,7 @@ HOP_BY_HOP_HEADERS = {
 
 _cache_lock = threading.Lock()
 _cache: dict[str, Any] = {"expires": 0.0, "payload": None}
+_distributor_cache: dict[str, Any] = {"expires": 0.0, "payload": None}
 
 
 def load_ecom_config(path: Path = CONFIG_PATH) -> tuple[str, str]:
@@ -192,6 +202,241 @@ def get_live_inventory(force: bool = False) -> dict[str, Any]:
     return payload
 
 
+def normalized_item_name(value: object) -> str:
+    return " ".join(re.sub(r"[^A-Z0-9]+", " ", str(value or "").upper()).split())
+
+
+def movement_distributor(value: object) -> str | None:
+    vendor = str(value or "").upper()
+    return next(
+        (identifier for identifier, (_, alias) in TRACKED_DISTRIBUTORS.items() if alias in vendor),
+        None,
+    )
+
+
+def fetch_recent_master_po(min_delivery_date: str) -> list[dict[str, Any]]:
+    """Fetch all table pages, retaining only potentially relevant movement rows."""
+    count = int(fetch_json("/api/dashboard/table-count/master_po").get("count") or 0)
+    page_size = 5000
+    pages = (count + page_size - 1) // page_size
+    def fetch_page(page: int) -> dict[str, Any]:
+        return fetch_json(
+            f"/api/dashboard/table-data/master_po?page={page}&page_size={page_size}",
+            timeout=90,
+        )
+
+    retained: list[dict[str, Any]] = []
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        responses = pool.map(fetch_page, range(pages))
+        for response in responses:
+            for row in response.get("data") or []:
+                delivery_date = str(row.get("delivery_date") or "")[:10]
+                identifier = movement_distributor(row.get("vendor_new") or row.get("vendor_name"))
+                if identifier and delivery_date > min_delivery_date:
+                    retained.append(row)
+    return retained
+
+
+def fetch_sales_analysis(start: date, end: date) -> list[dict[str, Any]]:
+    page_size = 5000
+
+    def path(page: int) -> str:
+        return "/api/sap/sales-analysis?" + urllib.parse.urlencode(
+            {
+                "from_date": start.isoformat(),
+                "to_date": end.isoformat(),
+                "page": page,
+                "page_size": page_size,
+            }
+        )
+
+    first = fetch_json(path(0), timeout=90)
+    rows = list(first.get("data") or [])
+    count = int(first.get("count") or len(rows))
+    pages = (count + page_size - 1) // page_size
+    if pages > 1:
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            for response in pool.map(lambda page: fetch_json(path(page), timeout=90), range(1, pages)):
+                rows.extend(response.get("data") or [])
+    return rows
+
+
+def build_distributor_payload(
+    baseline_payload: dict[str, Any],
+    sales_rows: list[dict[str, Any]],
+    master_po_rows: list[dict[str, Any]],
+    item_rows: list[dict[str, Any]],
+    observed_at: str | None = None,
+) -> dict[str, Any]:
+    baseline_by_id = {row["id"]: row for row in baseline_payload["distributors"]}
+    card_to_id = {code: identifier for identifier, (code, _) in TRACKED_DISTRIBUTORS.items()}
+    unique_names: dict[str, set[str]] = defaultdict(set)
+    for item in item_rows:
+        code = str(item.get("ItemCode") or "")
+        if code.startswith("FG"):
+            unique_names[normalized_item_name(item.get("ItemName"))].add(code)
+
+    billing: dict[tuple[str, str], float] = defaultdict(float)
+    for row in sales_rows:
+        identifier = card_to_id.get(str(row.get("CardCode") or ""))
+        if not identifier:
+            continue
+        baseline = baseline_by_id[identifier]
+        document_date = str(row.get("DocDate") or "")[:10]
+        if document_date <= baseline["asOf"]:
+            continue
+        quantity = float(row.get("Quantity") or 0)
+        if str(row.get("Type") or "").upper() == "SALES RETURN":
+            quantity = -abs(quantity)
+        if quantity == 0:
+            continue
+        billing[(identifier, str(row.get("ItemCode") or ""))] += quantity
+
+    grn: dict[tuple[str, str], float] = defaultdict(float)
+    unresolved_grn: dict[str, float] = defaultdict(float)
+    seen_grn: set[tuple[Any, ...]] = set()
+    for row in master_po_rows:
+        identifier = movement_distributor(row.get("vendor_new") or row.get("vendor_name"))
+        if not identifier:
+            continue
+        baseline = baseline_by_id[identifier]
+        delivery_date = str(row.get("delivery_date") or "")[:10]
+        if delivery_date <= baseline["asOf"]:
+            continue
+        dedupe_key = (
+            identifier,
+            row.get("po_number"),
+            row.get("format"),
+            row.get("sku_code"),
+            row.get("location"),
+            delivery_date,
+            row.get("delivered_qty"),
+        )
+        if dedupe_key in seen_grn:
+            continue
+        seen_grn.add(dedupe_key)
+        quantity = float(row.get("delivered_qty") or 0)
+        if quantity == 0:
+            continue
+        candidates = unique_names.get(normalized_item_name(row.get("sap_sku_name")), set())
+        if len(candidates) != 1:
+            unresolved_grn[identifier] += quantity
+            continue
+        grn[(identifier, next(iter(candidates)))] += quantity
+
+    distributors: list[dict[str, Any]] = []
+    all_totals = {"opening": 0.0, "billing": 0.0, "grn": 0.0, "projected": 0.0}
+    premium_totals = {"opening": 0.0, "billing": 0.0, "grn": 0.0, "projected": 0.0}
+    for identifier in ("chirag", "antize", "baba"):
+        baseline = baseline_by_id[identifier]
+        rows_by_code = {row["sapCode"]: dict(row) for row in baseline["rows"]}
+        movement_codes = {
+            code for (owner, code) in set(billing) | set(grn) if owner == identifier and code
+        }
+        for code in movement_codes - set(rows_by_code):
+            rows_by_code[code] = {
+                "sapCode": code,
+                "itemName": code,
+                "reportedOpeningPieces": 0,
+                "usableOpeningPieces": 0,
+                "openingStatus": "qualified",
+                "openingEvidence": "zero inferred from complete physical report",
+            }
+
+        projected_rows = []
+        for code, source in rows_by_code.items():
+            opening = float(source["usableOpeningPieces"])
+            billed = billing[(identifier, code)]
+            accepted = grn[(identifier, code)]
+            projected = opening + billed - accepted
+            item_head, category = classify_item(source.get("itemName") or code)
+            projected_rows.append(
+                {
+                    **source,
+                    "itemHead": item_head,
+                    "category": category,
+                    "billingPieces": billed,
+                    "grnPieces": accepted,
+                    "projectedPieces": projected,
+                    "status": "exception" if projected < 0 or source["openingStatus"] != "qualified" else "qualified",
+                }
+            )
+
+        def scope_totals(scope: str) -> dict[str, float]:
+            scoped = [row for row in projected_rows if scope == "all" or row["itemHead"] == "PREMIUM"]
+            return {
+                "opening": sum(float(row["usableOpeningPieces"]) for row in scoped),
+                "billing": sum(float(row["billingPieces"]) for row in scoped),
+                "grn": sum(float(row["grnPieces"]) for row in scoped),
+                "projected": sum(float(row["projectedPieces"]) for row in scoped),
+            }
+
+        all_scope = scope_totals("all")
+        premium_scope = scope_totals("premium")
+        for key in all_totals:
+            all_totals[key] += all_scope[key]
+            premium_totals[key] += premium_scope[key]
+        distributors.append(
+            {
+                "id": identifier,
+                "code": baseline["code"],
+                "name": baseline["name"],
+                "asOf": baseline["asOf"],
+                "sourceFile": baseline["sourceFile"],
+                "openingMissing": False,
+                "negativeSkuCount": sum(row["projectedPieces"] < 0 for row in projected_rows),
+                "openingExceptionSkus": baseline["negativeOpeningSkus"],
+                "activeSkuCount": sum(row["projectedPieces"] != 0 for row in projected_rows),
+                "premiumSkuCount": sum(row["itemHead"] == "PREMIUM" for row in projected_rows),
+                "unresolvedGrnPieces": unresolved_grn[identifier],
+                "live": {"leadTimeDays": None, "all": all_scope, "premium": premium_scope},
+                "rows": sorted(projected_rows, key=lambda row: (row["status"] != "exception", row["projectedPieces"])),
+            }
+        )
+
+    return {
+        "status": "live-projection",
+        "observedAt": observed_at or datetime.now(timezone.utc).isoformat(),
+        "formula": baseline_payload["formula"],
+        "sources": [
+            "Qualified distributor physical-count workbooks",
+            "Ecom SAP sales-analysis billing",
+            "Ecom master_po delivered/GRN rows",
+        ],
+        "distributors": distributors,
+        "totals": {"all": all_totals, "premium": premium_totals},
+    }
+
+
+def get_live_distributors(force: bool = False) -> dict[str, Any]:
+    now = time.monotonic()
+    with _cache_lock:
+        if (
+            not force
+            and _distributor_cache["payload"] is not None
+            and now < _distributor_cache["expires"]
+        ):
+            return _distributor_cache["payload"]
+
+    baseline_payload = json.loads(BASELINES_PATH.read_text())
+    baseline_dates = [row["asOf"] for row in baseline_payload["distributors"]]
+    start = min(date.fromisoformat(value) for value in baseline_dates) + timedelta(days=1)
+    end = date.today()
+    sales_rows = fetch_sales_analysis(start, end)
+    items = fetch_json("/api/sap/items?page=0&page_size=2000")
+    master_po = fetch_recent_master_po(min(baseline_dates))
+    payload = build_distributor_payload(
+        baseline_payload,
+        sales_rows,
+        master_po,
+        items.get("data") or [],
+    )
+    with _cache_lock:
+        _distributor_cache["payload"] = payload
+        _distributor_cache["expires"] = time.monotonic() + DISTRIBUTOR_CACHE_SECONDS
+    return payload
+
+
 class GatewayHandler(BaseHTTPRequestHandler):
     upstream = "http://127.0.0.1:3301"
     protocol_version = "HTTP/1.1"
@@ -213,6 +458,14 @@ class GatewayHandler(BaseHTTPRequestHandler):
     def _serve_inventory(self) -> None:
         try:
             self._json(200, get_live_inventory(force="refresh=1" in self.path))
+        except urllib.error.HTTPError as exc:
+            self._json(502, {"status": "error", "error": f"Ecom API returned HTTP {exc.code}"})
+        except Exception as exc:  # defensive boundary: never leak credentials
+            self._json(502, {"status": "error", "error": str(exc)})
+
+    def _serve_distributors(self) -> None:
+        try:
+            self._json(200, get_live_distributors(force="refresh=1" in self.path))
         except urllib.error.HTTPError as exc:
             self._json(502, {"status": "error", "error": f"Ecom API returned HTTP {exc.code}"})
         except Exception as exc:  # defensive boundary: never leak credentials
@@ -253,8 +506,11 @@ class GatewayHandler(BaseHTTPRequestHandler):
             self._json(502, {"status": "error", "error": "Application upstream is unavailable"})
 
     def do_GET(self) -> None:  # noqa: N802
-        if urllib.parse.urlsplit(self.path).path == "/api/live/inventory":
+        route = urllib.parse.urlsplit(self.path).path
+        if route == "/api/live/inventory":
             self._serve_inventory()
+        elif route == "/api/live/distributors":
+            self._serve_distributors()
         else:
             self._proxy()
 

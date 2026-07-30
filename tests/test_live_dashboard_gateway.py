@@ -81,5 +81,77 @@ class LiveInventoryProjectionTests(unittest.TestCase):
         self.assertEqual(GATEWAY.inventory_status(100, 10, 90), "Healthy")
 
 
+class LiveDistributorProjectionTests(unittest.TestCase):
+    def test_projects_qualified_opening_with_post_cutoff_billing_and_grn(self):
+        baselines = {
+            "formula": "opening + billing - GRN",
+            "distributors": [
+                {
+                    "id": identifier,
+                    "code": code,
+                    "name": identifier.title(),
+                    "asOf": cutoff,
+                    "sourceFile": f"{identifier}.xlsx",
+                    "negativeOpeningSkus": 0,
+                    "rows": [
+                        {
+                            "sapCode": "FG1",
+                            "itemName": "GROUNDNUT OIL 1 LTR",
+                            "reportedOpeningPieces": 100,
+                            "usableOpeningPieces": 100,
+                            "openingStatus": "qualified",
+                        }
+                    ],
+                }
+                for identifier, code, cutoff in (
+                    ("chirag", "CUSTA000354", "2026-07-29"),
+                    ("antize", "CUSTA000927", "2026-07-28"),
+                    ("baba", "CUSTA000900", "2026-07-30"),
+                )
+            ],
+        }
+        sales = [
+            {
+                "CardCode": "CUSTA000927",
+                "DocDate": "2026-07-29T00:00:00",
+                "ItemCode": "FG1",
+                "Quantity": 40,
+                "Type": "Sales",
+            },
+            {
+                "CardCode": "CUSTA000927",
+                "DocDate": "2026-07-28T00:00:00",
+                "ItemCode": "FG1",
+                "Quantity": 999,
+                "Type": "Sales",
+            },
+        ]
+        master_po = [
+            {
+                "vendor_new": "ANTIZE FOODS PRIVATE LIMITED",
+                "po_number": "PO1",
+                "format": "BLINKIT",
+                "sku_code": "SKU1",
+                "location": "DELHI",
+                "delivery_date": "2026-07-29",
+                "delivered_qty": 15,
+                "sap_sku_name": "GROUNDNUT OIL 1 LTR",
+            }
+        ]
+        items = [{"ItemCode": "FG1", "ItemName": "GROUNDNUT OIL 1 LTR"}]
+
+        result = GATEWAY.build_distributor_payload(
+            baselines, sales, master_po, items, "2026-07-30T12:00:00+00:00"
+        )
+        antize = next(row for row in result["distributors"] if row["id"] == "antize")
+
+        self.assertEqual(antize["live"]["all"]["opening"], 100)
+        self.assertEqual(antize["live"]["all"]["billing"], 40)
+        self.assertEqual(antize["live"]["all"]["grn"], 15)
+        self.assertEqual(antize["live"]["all"]["projected"], 125)
+        self.assertEqual(antize["unresolvedGrnPieces"], 0)
+        self.assertEqual(result["status"], "live-projection")
+
+
 if __name__ == "__main__":
     unittest.main()

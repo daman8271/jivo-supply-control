@@ -57,6 +57,40 @@ type LiveInventory = {
   totals: InventoryTotals;
   error?: string;
 };
+type DistributorMovementTotals = {
+  opening: number;
+  billing: number;
+  grn: number;
+  projected: number;
+};
+type DistributorProjectionRow = {
+  sapCode: string;
+  itemName: string;
+  itemHead: string;
+  reportedOpeningPieces: number;
+  usableOpeningPieces: number;
+  billingPieces: number;
+  grnPieces: number;
+  projectedPieces: number;
+  status: string;
+  openingStatus: string;
+};
+type DistributorSummaryRow = Seed["distributorSummary"][number] & {
+  asOf?: string;
+  sourceFile?: string;
+  openingExceptionSkus?: number;
+  unresolvedGrnPieces?: number;
+  rows?: DistributorProjectionRow[];
+};
+type LiveDistributors = {
+  status: "loading" | "live-projection" | "fallback";
+  observedAt: string;
+  formula: string;
+  sources: string[];
+  distributors: DistributorSummaryRow[];
+  totals: { all: DistributorMovementTotals; premium: DistributorMovementTotals };
+  error?: string;
+};
 
 const number = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 });
@@ -169,6 +203,17 @@ export function ControlTower({
     rows: seed.jmInventory as InventoryRow[],
     totals: seed.jmTotals as InventoryTotals,
   });
+  const [liveDistributors, setLiveDistributors] = useState<LiveDistributors>({
+    status: "loading",
+    observedAt: seed.generatedAt,
+    formula: seed.liveReconciliation.formula,
+    sources: [],
+    distributors: seed.distributorSummary as DistributorSummaryRow[],
+    totals: {
+      all: seed.liveReconciliation.all,
+      premium: seed.liveReconciliation.premium,
+    },
+  });
 
   useEffect(() => {
     let active = true;
@@ -204,10 +249,57 @@ export function ControlTower({
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    async function refreshDistributors() {
+      try {
+        const response = await fetch("/api/live/distributors", {
+          cache: "no-store",
+          headers: { accept: "application/json" },
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const payload = (await response.json()) as LiveDistributors;
+        const distributors = payload.distributors.map((row) => {
+          const base = seed.distributorSummary.find((candidate) => candidate.id === row.id);
+          if (!base) throw new Error(`Unknown distributor ${row.id}`);
+          return { ...base, ...row, live: row.live } as DistributorSummaryRow;
+        });
+        if (active) setLiveDistributors({ ...payload, distributors });
+      } catch (error) {
+        if (active) {
+          setLiveDistributors((current) => ({
+            ...current,
+            status: "fallback",
+            error:
+              error instanceof Error
+                ? error.message
+                : "Live distributor projection unavailable",
+          }));
+        }
+      } finally {
+        if (active) timer = setTimeout(refreshDistributors, 300_000);
+      }
+    }
+
+    void refreshDistributors();
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [seed.distributorSummary]);
+
   const inventoryRows = liveInventory.rows;
   const inventoryTotals = liveInventory.totals;
+  const distributorRows = liveDistributors.distributors;
+  const distributorExceptions = distributorRows.flatMap((distributor) =>
+    (distributor.rows ?? [])
+      .filter((row) => row.status === "exception")
+      .map((row) => ({ ...row, distributor: distributor.name })),
+  );
 
-  const liveTotals = seed.liveReconciliation[scope];
+  const liveTotals = liveDistributors.totals[scope];
   const augustPoByProduct = useMemo(
     () =>
       new Map(
@@ -337,12 +429,12 @@ export function ControlTower({
   }, [query, inventoryRows, statusFilter]);
 
   const maxDistributorBalance = Math.max(
-    ...seed.distributorSummary.map((row) =>
+    ...distributorRows.map((row) =>
       Math.max(0, row.live[scope].projected),
     ),
     1,
   );
-  const missingDistributorOpenings = seed.distributorSummary.filter(
+  const missingDistributorOpenings = distributorRows.filter(
     (row) => row.openingMissing,
   ).length;
   const materialBlockers = productionSignals.factoryPlanning.materials.blockers;
@@ -352,7 +444,7 @@ export function ControlTower({
     openPoPieces: productionSignals.openPo.planningMonth.pendingPieces,
     blockedPoPieces:
       productionSignals.openPo.planningMonth.planCoverage.calculationBlockedPieces,
-    networkProjectedUnits: seed.liveReconciliation.all.projected,
+    networkProjectedUnits: liveDistributors.totals.all.projected,
     missingDistributorOpenings,
     criticalInventorySkus: inventoryTotals.criticalSkus,
     productionPieces: productionPlan.totals.productionPieces,
@@ -400,7 +492,7 @@ export function ControlTower({
       name: "Network stock",
       status: controlStageStates.networkStock.status,
       tone: controlStageStates.networkStock.tone as ControlTone,
-      signal: `${number.format(seed.liveReconciliation.all.projected)} projected units`,
+      signal: `${number.format(liveDistributors.totals.all.projected)} projected units`,
       detail: `${number.format(inventoryTotals.available)} JM available · ${missingDistributorOpenings} missing openings · ${inventoryTotals.criticalSkus} critical JM SKUs`,
       target: "replenishment",
     },
@@ -575,25 +667,33 @@ export function ControlTower({
                 ? liveInventory.status === "live"
                   ? "Live inventory"
                   : "Inventory fallback"
-                : view === "replenishment"
-                  ? "Planning cutoff"
-                  : "Snapshot"}
+                : view === "distributors"
+                  ? liveDistributors.status === "live-projection"
+                    ? "Live distributor projection"
+                    : "Distributor fallback"
+                  : view === "replenishment"
+                    ? "Planning cutoff"
+                    : "Snapshot"}
             </span>
             <strong>
               {view === "inventory"
                 ? formatObservedAt(liveInventory.observedAt)
-                : view === "replenishment"
-                  ? "24 July 2026 · 17:28 IST"
-                  : "24 July 2026 · 15:30 IST"}
+                : view === "distributors"
+                  ? formatObservedAt(liveDistributors.observedAt)
+                  : view === "replenishment"
+                    ? "24 July 2026 · 17:28 IST"
+                    : "24 July 2026 · 15:30 IST"}
             </strong>
           </div>
           <div className="topbar-actions">
             <span className="source-count">
               {view === "inventory"
                 ? 1
-                : view === "replenishment"
-                  ? replenishmentData.sources.length
-                  : seed.sourceStatus.length}{" "}
+                : view === "distributors"
+                  ? liveDistributors.sources.length
+                  : view === "replenishment"
+                    ? replenishmentData.sources.length
+                    : seed.sourceStatus.length}{" "}
               sources
             </span>
             <button
@@ -657,7 +757,7 @@ export function ControlTower({
               <article className="control-summary-card visible">
                 <span>Qualified network signal</span>
                 <strong>
-                  {number.format(seed.liveReconciliation.all.projected)} projected
+                  {number.format(liveDistributors.totals.all.projected)} projected
                   network units
                 </strong>
                 <p>
@@ -854,9 +954,9 @@ export function ControlTower({
               <Metric
                 label="Open exceptions"
                 value={number.format(
-                  inventoryTotals.criticalSkus + seed.distributorExceptions.length,
+                  inventoryTotals.criticalSkus + distributorExceptions.length,
                 )}
-                note={`${inventoryTotals.criticalSkus} JM critical · ${seed.distributorExceptions.length} distributor`}
+                note={`${inventoryTotals.criticalSkus} JM critical · ${distributorExceptions.length} distributor`}
                 tone="amber"
               />
             </section>
@@ -869,7 +969,7 @@ export function ControlTower({
                   action={`${scope === "premium" ? "Premium" : "All"} · units`}
                 />
                 <div className="distributor-bars">
-                  {seed.distributorSummary.map((distributor) => {
+                  {distributorRows.map((distributor) => {
                     const value = distributor.live[scope].projected;
                     const width = `${Math.max(
                       3,
@@ -900,8 +1000,8 @@ export function ControlTower({
                   })}
                 </div>
                 <div className="formula-note">
-                  <span>{seed.liveReconciliation.label}</span>
-                  <strong>{seed.liveReconciliation.formula}</strong>
+                  <span>Measured baseline + live movements</span>
+                  <strong>{liveDistributors.formula}</strong>
                 </div>
               </article>
 
@@ -1086,18 +1186,17 @@ export function ControlTower({
             <PageHeading
               eyebrow="Distributor network"
               title="Live stock projection"
-              description="The 16 July opening carried forward with live SAP billing and platform-accepted quantities."
+              description="Qualified physical counts from 28–30 July carried forward with live SAP billing and mapped platform-accepted quantities."
             />
             <section className="formula-banner">
-              <span>{seed.liveReconciliation.label}</span>
-              <strong>{seed.liveReconciliation.formula}</strong>
+              <span>Measured baseline + live movements</span>
+              <strong>{liveDistributors.formula}</strong>
               <small>
-                Excludes unreported in-transit stock and manual adjustments;
-                Knowtable and Evara still need physical opening confirmation.
+                Physical openings are dated per distributor; SAP billing and mapped platform GRN movements refresh every five minutes.
               </small>
             </section>
             <section className="distributor-card-grid">
-              {seed.distributorSummary.map((distributor) => (
+              {distributorRows.map((distributor) => (
                 <article className="network-card" key={distributor.id}>
                   <div className="network-card-head">
                     <div>
@@ -1106,23 +1205,19 @@ export function ControlTower({
                     </div>
                     <span
                       className={
-                        distributor.openingMissing
-                          ? "status-pill need"
-                          : distributor.live.leadTimeDays
-                            ? "status-pill have"
-                            : "status-pill partial"
+                        liveDistributors.status === "live-projection"
+                          ? "status-pill have"
+                          : "status-pill need"
                       }
                     >
-                      {distributor.openingMissing
-                        ? "Opening missing"
-                        : distributor.live.leadTimeDays
-                          ? `${distributor.live.leadTimeDays}d transit`
-                          : "Lead time needed"}
+                      {liveDistributors.status === "live-projection"
+                        ? "Live projected"
+                        : "Fallback"}
                     </span>
                   </div>
                   <div className="network-metrics">
                     <span>
-                      <small>16 Jul opening</small>
+                      <small>{distributor.asOf ? `${distributor.asOf} qualified opening` : "Qualified opening"}</small>
                       <strong>{number.format(distributor.live.all.opening)}</strong>
                     </span>
                     <span>
@@ -1134,7 +1229,7 @@ export function ControlTower({
                       <strong>{number.format(distributor.live.all.grn)}</strong>
                     </span>
                     <span>
-                      <small>24 Jul projected</small>
+                      <small>Now projected</small>
                       <strong
                         className={
                           distributor.live.all.projected < 0 ? "negative-text" : ""
@@ -1153,9 +1248,9 @@ export function ControlTower({
             </section>
             <section className="panel table-panel">
               <PanelHeading
-                eyebrow="Opening exceptions"
-                title="Negative 16 July balances"
-                action={`${seed.distributorExceptions.length} rows`}
+                eyebrow="Projection exceptions"
+                title="Negative opening or projected balances"
+                action={`${distributorExceptions.length} rows`}
               />
               <div className="table-scroll">
                 <table>
@@ -1172,20 +1267,22 @@ export function ControlTower({
                     </tr>
                   </thead>
                   <tbody>
-                    {seed.distributorExceptions.map((row, index) => (
-                      <tr key={`${row.distributorId}-${row.sapCode}-${index}`}>
+                    {distributorExceptions.map((row, index) => (
+                      <tr key={`${row.distributor}-${row.sapCode}-${index}`}>
                         <td>{row.distributor}</td>
                         <td>
-                          <strong>{row.sku}</strong>
+                          <strong>{row.itemName}</strong>
                           <small className="mono">{row.sapCode}</small>
                         </td>
                         <td>{row.itemHead}</td>
-                        <td>{number.format(row.soh)}</td>
-                        <td>{number.format(row.billing)}</td>
-                        <td>{number.format(row.grn)}</td>
-                        <td className="negative-text">{number.format(row.balance)}</td>
+                        <td>{number.format(row.usableOpeningPieces)}</td>
+                        <td>{number.format(row.billingPieces)}</td>
+                        <td>{number.format(row.grnPieces)}</td>
+                        <td className="negative-text">{number.format(row.projectedPieces)}</td>
                         <td>
-                          <span className="status-pill need">{row.issue}</span>
+                          <span className="status-pill need">
+                            {row.projectedPieces < 0 ? "Projected below zero" : row.openingStatus}
+                          </span>
                         </td>
                       </tr>
                     ))}
