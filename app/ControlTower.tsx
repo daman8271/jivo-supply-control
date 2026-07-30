@@ -1227,7 +1227,9 @@ export function ControlTower({
           </div>
         )}
 
-        {view === "replenishment" && <ReplenishmentWorkbench />}
+        {view === "replenishment" && (
+          <ReplenishmentWorkbench liveDistributors={liveDistributors} />
+        )}
 
         {view === "distributors" && (
           <div className="page">

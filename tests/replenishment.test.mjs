@@ -3,6 +3,7 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 
 import { calculatePoReplenishment } from "../app/lib/replenishment.js";
+import { applyLiveDistributorStock } from "../app/lib/live-replenishment.js";
 import {
   clearDistributorSelection,
   selectAllDistributors,
@@ -19,6 +20,66 @@ test("distributor selection supports independent multi-select, clear and select 
   assert.deepEqual(toggleDistributorSelection(["chirag"], "antize"), ["chirag", "antize"]);
   assert.deepEqual(toggleDistributorSelection(["chirag", "antize"], "chirag"), ["antize"]);
   assert.deepEqual(clearDistributorSelection(), []);
+});
+
+test("uses the exact Distributor network live SOH in SKU replenishment", () => {
+  const source = snapshot.rows.find(
+    (row) => row.distributorId === "chirag" && row.sapCode === "FG0000142",
+  );
+  assert.ok(source);
+
+  const [liveRow] = applyLiveDistributorStock([source], {
+    status: "live-projection",
+    observedAt: "2026-07-30T16:55:30.781875+00:00",
+    distributors: [
+      {
+        id: "chirag",
+        rows: [
+          {
+            sapCode: "FG0000142",
+            projectedPieces: 3587,
+            status: "qualified",
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.equal(liveRow.evidencedStockPieces, 3587);
+  assert.equal(liveRow.trackerBalancePieces, 3587);
+  assert.equal(liveRow.stockStatus, "live-projected");
+  assert.equal(liveRow.stockAsOf, "2026-07-30T16:55:30.781875+00:00");
+  assert.equal(liveRow.liveStockApplied, true);
+});
+
+test("treats an absent SKU as qualified zero only for a complete live distributor", () => {
+  const source = snapshot.rows.find(
+    (row) => row.distributorId === "antize" && row.sapCode === "FG0000142",
+  );
+  assert.ok(source);
+
+  const [liveRow] = applyLiveDistributorStock([source], {
+    status: "live-projection",
+    observedAt: "2026-07-30T16:55:30.781875+00:00",
+    distributors: [{ id: "antize", rows: [] }],
+  });
+  assert.equal(liveRow.evidencedStockPieces, 0);
+  assert.equal(liveRow.stockStatus, "live-qualified-zero");
+  assert.equal(liveRow.stockQualified, true);
+});
+
+test("does not label retained replenishment stock live when the projection is stale", () => {
+  const source = snapshot.rows.find(
+    (row) => row.distributorId === "chirag" && row.sapCode === "FG0000142",
+  );
+  const [retained] = applyLiveDistributorStock([source], {
+    status: "fallback",
+    observedAt: "2026-07-30T16:55:30.781875+00:00",
+    distributors: [],
+  });
+  assert.equal(retained.evidencedStockPieces, source.evidencedStockPieces);
+  assert.equal(retained.stockStatus, source.stockStatus);
+  assert.equal(retained.liveStockApplied, false);
 });
 
 test("calculates PO-only replenishment with stock and case-pack rounding", () => {

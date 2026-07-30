@@ -8,10 +8,23 @@ import {
   selectAllDistributors,
   toggleDistributorSelection,
 } from "./lib/distributor-selection.js";
+import { applyLiveDistributorStock } from "./lib/live-replenishment.js";
 
 type Snapshot = typeof replenishmentData;
 type Row = Snapshot["rows"][number];
 type StatusFilter = "attention" | "requirement" | "replenish" | "blocked" | "all";
+type LiveProjection = {
+  status: string;
+  observedAt: string;
+  distributors: Array<{
+    id: string;
+    rows?: Array<{
+      sapCode: string;
+      projectedPieces: number;
+      status: string;
+    }>;
+  }>;
+};
 
 const number = new Intl.NumberFormat("en-IN");
 const timestamp = new Intl.DateTimeFormat("en-IN", {
@@ -68,7 +81,11 @@ function matchesStatus(row: Row, status: StatusFilter) {
   );
 }
 
-export default function ReplenishmentWorkbench() {
+export default function ReplenishmentWorkbench({
+  liveDistributors,
+}: {
+  liveDistributors: LiveProjection;
+}) {
   const [selectedDistributors, setSelectedDistributors] = useState<string[]>(() =>
     replenishmentData.distributors.map((item) => item.id),
   );
@@ -77,6 +94,10 @@ export default function ReplenishmentWorkbench() {
   const selectedDistributorSet = useMemo(
     () => new Set(selectedDistributors),
     [selectedDistributors],
+  );
+  const canonicalRows = useMemo(
+    () => applyLiveDistributorStock(replenishmentData.rows, liveDistributors) as Row[],
+    [liveDistributors],
   );
 
   const toggleDistributor = (distributorId: string) => {
@@ -87,7 +108,7 @@ export default function ReplenishmentWorkbench() {
 
   const rows = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return replenishmentData.rows.filter((row) => {
+    return canonicalRows.filter((row) => {
       if (!selectedDistributorSet.has(row.distributorId)) return false;
       if (!matchesStatus(row, status)) return false;
       if (!normalized) return true;
@@ -95,7 +116,7 @@ export default function ReplenishmentWorkbench() {
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(normalized));
     });
-  }, [query, selectedDistributorSet, status]);
+  }, [canonicalRows, query, selectedDistributorSet, status]);
 
   const visibleOpenPo = rows.reduce((sum, row) => sum + row.openPoPieces, 0);
   const visibleRecommended = rows.reduce(
@@ -110,8 +131,25 @@ export default function ReplenishmentWorkbench() {
     (sum, row) => sum + (row.requiredInventoryPieces ?? 0),
     0,
   );
+  const canonicalRecommendedPieces = canonicalRows.reduce(
+    (sum, row) => sum + (row.recommendedPieces ?? 0),
+    0,
+  );
+  const canonicalRowsToReplenish = canonicalRows.filter(
+    (row) => row.status === "replenish",
+  ).length;
+  const canonicalBlockedOpenPoPieces = canonicalRows.reduce(
+    (sum, row) => sum + (row.recommendedPieces === null ? row.openPoPieces : 0),
+    0,
+  );
+  const canonicalIdentityBlockedOpenPoPieces = canonicalRows.reduce(
+    (sum, row) => sum + (row.status === "identity-blocked" ? row.openPoPieces : 0),
+    0,
+  );
+  const canonicalMappedEvidenceBlockedOpenPoPieces =
+    canonicalBlockedOpenPoPieces - canonicalIdentityBlockedOpenPoPieces;
   const distributorStats = replenishmentData.distributors.map((item) => {
-    const distributorRows = replenishmentData.rows.filter(
+    const distributorRows = canonicalRows.filter(
       (row) => row.distributorId === item.id,
     );
     return {
@@ -185,14 +223,14 @@ export default function ReplenishmentWorkbench() {
         </article>
         <article className="summary-positive">
           <span>Release-ready replenishment</span>
-          <strong>{number.format(replenishmentData.summary.recommendedPieces)} pcs</strong>
-          <small>{replenishmentData.summary.rowsToReplenish} SKU-distributor rows pass every evidence gate</small>
+          <strong>{number.format(canonicalRecommendedPieces)} pcs</strong>
+          <small>{canonicalRowsToReplenish} SKU-distributor rows pass every evidence gate</small>
         </article>
         <article className="summary-blocked">
           <span>Demand blocked</span>
-          <strong>{number.format(replenishmentData.summary.blockedOpenPoPieces)} pcs</strong>
+          <strong>{number.format(canonicalBlockedOpenPoPieces)} pcs</strong>
           <small>
-            {number.format(replenishmentData.summary.identityBlockedOpenPoPieces)} identity-blocked · {number.format(replenishmentData.summary.mappedEvidenceBlockedOpenPoPieces)} mapped/evidence-blocked
+            {number.format(canonicalIdentityBlockedOpenPoPieces)} identity-blocked · {number.format(canonicalMappedEvidenceBlockedOpenPoPieces)} mapped/evidence-blocked
           </small>
           <small>Missing or stale stock, identity, UOM or case-pack evidence prevents an exact recommendation</small>
         </article>
@@ -348,13 +386,15 @@ export default function ReplenishmentWorkbench() {
                     <b>{row.evidencedStockPieces !== null ? number.format(row.evidencedStockPieces) : "Unknown"}</b>
                     <span>{row.stockStatus.replaceAll("-", " ")}</span>
                     <small>
-                      {row.stockStatus === "missing-physical-count"
-                        ? "SKU absent from the accepted Antize physical count"
-                        : row.stockStatus.includes("physical-count")
-                          ? `Antize physical count · ${row.stockAsOf ?? "date missing"}`
-                          : row.trackerBalancePieces !== null
-                            ? `Tracker BAL ${number.format(row.trackerBalancePieces)} · ${row.stockAsOf ?? "date missing"}`
-                            : "No qualified SKU stock row"}
+                      {row.stockStatus.startsWith("live-")
+                        ? `Same live distributor projection · ${formatSourceAsOf(row.stockAsOf).replace("As of ", "")}`
+                        : row.stockStatus === "missing-physical-count"
+                          ? "SKU absent from the accepted Antize physical count"
+                          : row.stockStatus.includes("physical-count")
+                            ? `Antize physical count · ${row.stockAsOf ?? "date missing"}`
+                            : row.trackerBalancePieces !== null
+                              ? `Tracker BAL ${number.format(row.trackerBalancePieces)} · ${row.stockAsOf ?? "date missing"}`
+                              : "No qualified SKU stock row"}
                     </small>
                     <small><b>Inbound</b> Unknown · excluded; explicit zero evidence required</small>
                   </td>
@@ -393,8 +433,16 @@ export default function ReplenishmentWorkbench() {
         </div>
         <div>
           <span>Inventory evidence</span>
-          <strong>Tracker BAL = SOH + Billing − GRN</strong>
-          <small>The 16 July stock evidence is visible but excluded because it exceeds the {replenishmentData.policy.maxStockAgeDays}-day freshness gate.</small>
+          <strong>
+            {liveDistributors.status === "live-projection"
+              ? "Canonical live SOH shared with Distributor network"
+              : "Live distributor SOH unavailable"}
+          </strong>
+          <small>
+            {liveDistributors.status === "live-projection"
+              ? `Opening + SAP billing − platform GRN · ${formatSourceAsOf(liveDistributors.observedAt)}`
+              : "Dated stock remains visible but cannot qualify a recommendation."}
+          </small>
         </div>
         <div>
           <span>Read-only boundary</span>
