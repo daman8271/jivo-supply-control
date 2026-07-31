@@ -1228,7 +1228,10 @@ export function ControlTower({
         )}
 
         {view === "replenishment" && (
-          <ReplenishmentWorkbench liveDistributors={liveDistributors} />
+          <ReplenishmentWorkbench
+            liveDistributors={liveDistributors}
+            liveInventory={liveInventory}
+          />
         )}
 
         {view === "distributors" && (

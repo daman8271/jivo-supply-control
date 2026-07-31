@@ -24,6 +24,8 @@ export function replenishmentSortValue(row, key) {
   if (key === "stock") {
     return numeric(row.qualifiedStockPieces ?? row.evidencedStockPieces);
   }
+  if (key === "ownOnHand") return numeric(row.ownOnHandPieces);
+  if (key === "msl") return numeric(row.mslPieces);
   if (key === "need") {
     return numeric(row.recommendedPieces ?? row.rawNeedPieces ?? row.blockedOpenPoPieces);
   }
@@ -51,6 +53,23 @@ export function sortReplenishmentRows(rows, { key, direction }) {
       return compared === 0 ? left.index - right.index : compared * multiplier;
     })
     .map(({ row }) => row);
+}
+
+export function attachOwnInventoryMetrics(rows, inventoryRows, mslValues) {
+  const inventoryByCode = new Map(
+    inventoryRows.map((row) => [row.sapCode, numeric(row.onHand)]),
+  );
+  return rows.map((row) => ({
+    ...row,
+    ownOnHandPieces:
+      row.sapCode && inventoryByCode.has(row.sapCode)
+        ? inventoryByCode.get(row.sapCode)
+        : null,
+    mslPieces:
+      row.sapCode && Object.prototype.hasOwnProperty.call(mslValues, row.sapCode)
+        ? numeric(mslValues[row.sapCode])
+        : null,
+  }));
 }
 
 function unique(values) {

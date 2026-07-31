@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 
 import replenishmentData from "./data/distributor-replenishment.json";
 import {
@@ -10,6 +10,7 @@ import {
 } from "./lib/distributor-selection.js";
 import { applyLiveDistributorStock } from "./lib/live-replenishment.js";
 import {
+  attachOwnInventoryMetrics,
   groupReplenishmentRows,
   sortReplenishmentRows,
 } from "./lib/replenishment-table.js";
@@ -58,9 +59,21 @@ type GroupedRow = {
   status: string;
   details: GroupDetail[];
 };
-type DisplayRow = (Row & { grouped?: false }) | GroupedRow;
+type TableMetrics = {
+  ownOnHandPieces: number | null;
+  mslPieces: number | null;
+};
+type DisplayRow = ((Row & { grouped?: false }) | GroupedRow) & TableMetrics;
 type StatusFilter = "attention" | "requirement" | "replenish" | "blocked" | "all";
-type SortKey = "identity" | "required" | "openPo" | "stock" | "need" | "status";
+type SortKey =
+  | "identity"
+  | "required"
+  | "openPo"
+  | "stock"
+  | "ownOnHand"
+  | "msl"
+  | "need"
+  | "status";
 type SortDirection = "asc" | "desc";
 type GroupMode = "rows" | "sku";
 type SortState = { key: SortKey; direction: SortDirection };
@@ -75,6 +88,22 @@ type LiveProjection = {
       status: string;
     }>;
   }>;
+};
+type OwnInventoryProjection = {
+  status: "loading" | "live" | "fallback";
+  observedAt: string;
+  warehouseCode: string;
+  rows: Array<{
+    sapCode: string;
+    onHand: number;
+  }>;
+};
+type MslPayload = {
+  status: "ok" | "error";
+  unit: "pieces";
+  updatedAt: string | null;
+  values: Record<string, number>;
+  error?: string;
 };
 
 const number = new Intl.NumberFormat("en-IN");
@@ -132,7 +161,7 @@ function matchesStatus(row: Row, status: StatusFilter) {
   );
 }
 
-function isGroupedRow(row: DisplayRow): row is GroupedRow {
+function isGroupedRow(row: DisplayRow): row is GroupedRow & TableMetrics {
   return row.grouped === true;
 }
 
@@ -169,8 +198,10 @@ function SortableHeader({
 
 export default function ReplenishmentWorkbench({
   liveDistributors,
+  liveInventory,
 }: {
   liveDistributors: LiveProjection;
+  liveInventory: OwnInventoryProjection;
 }) {
   const [selectedDistributors, setSelectedDistributors] = useState<string[]>(() =>
     replenishmentData.distributors.map((item) => item.id),
@@ -180,6 +211,49 @@ export default function ReplenishmentWorkbench({
   const [groupMode, setGroupMode] = useState<GroupMode>("rows");
   const [sort, setSort] = useState<SortState>({ key: "openPo", direction: "desc" });
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
+  const [mslValues, setMslValues] = useState<Record<string, number>>({});
+  const [mslDrafts, setMslDrafts] = useState<Record<string, string>>({});
+  const [mslUpdatedAt, setMslUpdatedAt] = useState<string | null>(null);
+  const [mslLoading, setMslLoading] = useState(true);
+  const [mslLoadError, setMslLoadError] = useState<string | null>(null);
+  const [savingMsl, setSavingMsl] = useState<string[]>([]);
+  const [mslErrors, setMslErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    let active = true;
+    async function loadMsl() {
+      try {
+        const response = await fetch("/api/planner/msl", {
+          cache: "no-store",
+          headers: { accept: "application/json" },
+        });
+        const payload = (await response.json()) as MslPayload;
+        if (!response.ok || payload.status !== "ok") {
+          throw new Error(payload.error || `HTTP ${response.status}`);
+        }
+        if (!active) return;
+        setMslValues(payload.values);
+        setMslDrafts(
+          Object.fromEntries(
+            Object.entries(payload.values).map(([sapCode, pieces]) => [sapCode, String(pieces)]),
+          ),
+        );
+        setMslUpdatedAt(payload.updatedAt);
+        setMslLoadError(null);
+      } catch (error) {
+        if (active) {
+          setMslLoadError(error instanceof Error ? error.message : "MSL values unavailable");
+        }
+      } finally {
+        if (active) setMslLoading(false);
+      }
+    }
+    void loadMsl();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const selectedDistributorSet = useMemo(
     () => new Set(selectedDistributors),
     [selectedDistributors],
@@ -206,12 +280,17 @@ export default function ReplenishmentWorkbench({
         .some((value) => String(value).toLowerCase().includes(normalized));
     });
   }, [canonicalRows, query, selectedDistributorSet, status]);
-  const rows = useMemo<DisplayRow[]>(() => {
-    const displayRows = groupMode === "sku"
+  const rows = useMemo(() => {
+    const baseRows = groupMode === "sku"
       ? groupReplenishmentRows(filteredRows)
       : filteredRows;
-    return sortReplenishmentRows(displayRows, sort) as DisplayRow[];
-  }, [filteredRows, groupMode, sort]);
+    const decoratedRows = attachOwnInventoryMetrics(
+      baseRows,
+      liveInventory.rows,
+      mslValues,
+    ) as DisplayRow[];
+    return sortReplenishmentRows(decoratedRows, sort) as DisplayRow[];
+  }, [filteredRows, groupMode, liveInventory.rows, mslValues, sort]);
 
   const toggleSort = (key: SortKey) => {
     setSort((current) => ({
@@ -234,6 +313,92 @@ export default function ReplenishmentWorkbench({
       current.includes(groupId)
         ? current.filter((id) => id !== groupId)
         : [...current, groupId],
+    );
+  };
+
+  const saveMsl = async (sapCode: string) => {
+    const draft = (mslDrafts[sapCode] ?? "").trim();
+    if (draft !== "" && !/^\d+$/.test(draft)) {
+      setMslErrors((current) => ({ ...current, [sapCode]: "Enter whole pieces only" }));
+      return;
+    }
+    const pieces = draft === "" ? null : Number(draft);
+    if (pieces !== null && (!Number.isSafeInteger(pieces) || pieces > 1_000_000_000)) {
+      setMslErrors((current) => ({ ...current, [sapCode]: "Value is too large" }));
+      return;
+    }
+    setSavingMsl((current) => [...new Set([...current, sapCode])]);
+    setMslErrors((current) => ({ ...current, [sapCode]: "" }));
+    try {
+      const response = await fetch("/api/planner/msl", {
+        method: "PUT",
+        headers: { "content-type": "application/json", accept: "application/json" },
+        body: JSON.stringify({ sapCode, pieces }),
+      });
+      const payload = (await response.json()) as MslPayload;
+      if (!response.ok || payload.status !== "ok") {
+        throw new Error(payload.error || `HTTP ${response.status}`);
+      }
+      setMslValues(payload.values);
+      setMslDrafts((current) => ({
+        ...current,
+        [sapCode]: pieces === null ? "" : String(pieces),
+      }));
+      setMslUpdatedAt(payload.updatedAt);
+      setMslLoadError(null);
+    } catch (error) {
+      setMslErrors((current) => ({
+        ...current,
+        [sapCode]: error instanceof Error ? error.message : "Save failed",
+      }));
+    } finally {
+      setSavingMsl((current) => current.filter((code) => code !== sapCode));
+    }
+  };
+
+  const renderMslEditor = (sapCode: string | null, skuName: string) => {
+    if (!sapCode) {
+      return <span className="msl-unavailable">SAP identity required</span>;
+    }
+    const draft = mslDrafts[sapCode] ?? "";
+    const saved = Object.prototype.hasOwnProperty.call(mslValues, sapCode)
+      ? String(mslValues[sapCode])
+      : "";
+    const isSaving = savingMsl.includes(sapCode);
+    const error = mslErrors[sapCode];
+    return (
+      <div className="msl-editor">
+        <div className="msl-editor-control">
+          <input
+            aria-label={`Own inventory MSL in pieces for ${skuName}`}
+            inputMode="numeric"
+            min="0"
+            max="1000000000"
+            step="1"
+            type="number"
+            placeholder="Set MSL"
+            value={draft}
+            onChange={(event) => {
+              const value = event.target.value;
+              setMslDrafts((current) => ({ ...current, [sapCode]: value }));
+              setMslErrors((current) => ({ ...current, [sapCode]: "" }));
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") void saveMsl(sapCode);
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => void saveMsl(sapCode)}
+            disabled={mslLoading || isSaving || draft === saved}
+          >
+            {isSaving ? "Saving" : "Save"}
+          </button>
+        </div>
+        <small className={error ? "msl-error" : ""}>
+          {error || (mslLoadError ? "MSL store unavailable" : saved ? "Saved centrally" : "Not set")}
+        </small>
+      </div>
     );
   };
 
@@ -460,6 +625,16 @@ export default function ReplenishmentWorkbench({
           <span><b>{number.format(visibleOpenPo)}</b> open PO pcs</span>
           <span><b>{number.format(visibleRecommended)}</b> recommended pcs</span>
           <span><b>{number.format(visibleBlocked)}</b> blocked-demand pcs</span>
+          <span><b>{liveInventory.warehouseCode}</b> own on hand · {liveInventory.status}</span>
+          <span>
+            <b>Shared MSL</b> · {mslLoading
+              ? "loading"
+              : mslLoadError
+                ? "unavailable"
+                : mslUpdatedAt
+                  ? `saved ${timestamp.format(new Date(mslUpdatedAt))} IST`
+                  : "no values set"}
+          </span>
         </div>
 
         <div className="replenishment-table-wrap">
@@ -473,6 +648,8 @@ export default function ReplenishmentWorkbench({
                 <SortableHeader label="Required inventory" sortKey="required" sort={sort} onSort={toggleSort} />
                 <SortableHeader label="Platform PO orders" sortKey="openPo" sort={sort} onSort={toggleSort} />
                 <SortableHeader label="Stock / inbound" sortKey="stock" sort={sort} onSort={toggleSort} />
+                <SortableHeader label="Own on hand" sortKey="ownOnHand" sort={sort} onSort={toggleSort} />
+                <SortableHeader label="Own MSL" sortKey="msl" sort={sort} onSort={toggleSort} />
                 <SortableHeader label="Need / replenish" sortKey="need" sort={sort} onSort={toggleSort} />
                 <SortableHeader label="Status / evidence" sortKey="status" sort={sort} onSort={toggleSort} />
               </tr>
@@ -524,6 +701,20 @@ export default function ReplenishmentWorkbench({
                       <span>{row.qualifiedStockDistributors}/{row.distributorCount} distributor positions qualified</span>
                       <small>{row.liveStockDistributors} live · {row.stockExceptionCount} exceptions</small>
                     </td>
+                    <td className="own-stock-cell">
+                      <b>{!row.sapCode ? "SAP identity required" : row.ownOnHandPieces === null ? "No stock row" : number.format(row.ownOnHandPieces)}</b>
+                      <span>{liveInventory.warehouseCode} SAP on hand</span>
+                      <small>
+                        {!row.sapCode
+                          ? "Cannot join own inventory"
+                          : row.ownOnHandPieces === null
+                            ? "SKU absent from the GP-FGM stock feed"
+                            : liveInventory.status === "live" ? "Live own inventory" : "Fallback own inventory"}
+                      </small>
+                    </td>
+                    <td className="msl-cell">
+                      {renderMslEditor(row.sapCode, row.skuName)}
+                    </td>
                     <td>
                       <span>Raw need {number.format(row.rawNeedPieces)}</span>
                       <b>Replenish {number.format(row.recommendedPieces)}</b>
@@ -541,7 +732,7 @@ export default function ReplenishmentWorkbench({
                       id={`breakdown-${row.id.replaceAll(":", "-")}`}
                       className="replenishment-group-detail-row"
                     >
-                      <td colSpan={6}>
+                      <td colSpan={8}>
                         <div className="replenishment-breakdown-heading">
                           <strong>{row.skuName} distributor and platform breakdown</strong>
                           <span>{number.format(row.openPoPieces)} total pieces reconcile to the grouped row</span>
@@ -655,6 +846,20 @@ export default function ReplenishmentWorkbench({
                     </small>
                     <small><b>Inbound</b> Unknown · excluded; explicit zero evidence required</small>
                   </td>
+                  <td className="own-stock-cell">
+                    <b>{!row.sapCode ? "SAP identity required" : row.ownOnHandPieces === null ? "No stock row" : number.format(row.ownOnHandPieces)}</b>
+                    <span>{liveInventory.warehouseCode} SAP on hand</span>
+                    <small>
+                      {!row.sapCode
+                        ? "Cannot join own inventory"
+                        : row.ownOnHandPieces === null
+                          ? "SKU absent from the GP-FGM stock feed"
+                          : liveInventory.status === "live" ? "Live own inventory" : "Fallback own inventory"}
+                    </small>
+                  </td>
+                  <td className="msl-cell">
+                    {renderMslEditor(row.sapCode, row.skuName)}
+                  </td>
                   <td>
                     <span>Raw need {row.rawNeedPieces === null ? "blocked" : number.format(row.rawNeedPieces)}</span>
                     <b>Replenish {row.recommendedPieces === null ? "blocked" : number.format(row.recommendedPieces)}</b>
@@ -673,7 +878,7 @@ export default function ReplenishmentWorkbench({
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="replenishment-empty">No SKU rows match the selected filters.</td>
+                  <td colSpan={8} className="replenishment-empty">No SKU rows match the selected filters.</td>
                 </tr>
               )}
             </tbody>
@@ -699,6 +904,14 @@ export default function ReplenishmentWorkbench({
             {liveDistributors.status === "live-projection"
               ? `Opening + SAP billing − platform GRN · ${formatSourceAsOf(liveDistributors.observedAt)}`
               : "Dated stock remains visible but cannot qualify a recommendation."}
+          </small>
+        </div>
+        <div>
+          <span>Own inventory reference</span>
+          <strong>{liveInventory.warehouseCode} SAP on hand vs shared MSL</strong>
+          <small>
+            Own on-hand {formatSourceAsOf(liveInventory.observedAt)}. MSL is planner-owned, stored centrally in pieces,
+            and does not change the replenishment formula. Public-preview editing is unauthenticated by operator choice.
           </small>
         </div>
         <div>

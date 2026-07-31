@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 import { calculatePoReplenishment } from "../app/lib/replenishment.js";
 import { applyLiveDistributorStock } from "../app/lib/live-replenishment.js";
 import {
+  attachOwnInventoryMetrics,
   groupReplenishmentRows,
   sortReplenishmentRows,
 } from "../app/lib/replenishment-table.js";
@@ -44,6 +45,8 @@ test("supports deterministic sorting for every replenishment header", () => {
       requiredInventoryPieces: 10,
       openPoPieces: 20,
       evidencedStockPieces: 5,
+      ownOnHandPieces: 100,
+      mslPieces: 50,
       recommendedPieces: 1,
       status: "blocked",
     },
@@ -54,15 +57,42 @@ test("supports deterministic sorting for every replenishment header", () => {
       requiredInventoryPieces: 30,
       openPoPieces: 40,
       evidencedStockPieces: 15,
+      ownOnHandPieces: 300,
+      mslPieces: 250,
       recommendedPieces: 11,
       status: "covered",
     },
   ];
   assert.equal(sortReplenishmentRows(rows, { key: "identity", direction: "asc" })[0].id, "alpha");
-  for (const key of ["required", "openPo", "stock", "need"]) {
+  for (const key of ["required", "openPo", "stock", "ownOnHand", "msl", "need"]) {
     assert.equal(sortReplenishmentRows(rows, { key, direction: "desc" })[0].id, "beta", key);
   }
   assert.equal(sortReplenishmentRows(rows, { key: "status", direction: "desc" })[0].id, "alpha");
+});
+
+test("joins own on-hand and MSL by canonical SAP code without multiplying grouped values", () => {
+  const rows = [
+    { id: "a", skuName: "Groundnut 1L", sapCode: "FG1" },
+    { id: "b", skuName: "Groundnut 1L", sapCode: "FG1" },
+    { id: "c", skuName: "Unmapped", sapCode: null },
+  ];
+  const decorated = attachOwnInventoryMetrics(
+    rows,
+    [{ sapCode: "FG1", onHand: 1234 }],
+    { FG1: 900 },
+  );
+  assert.deepEqual(
+    decorated.map((row) => [row.ownOnHandPieces, row.mslPieces]),
+    [[1234, 900], [1234, 900], [null, null]],
+  );
+
+  const grouped = attachOwnInventoryMetrics(
+    [{ id: "sap:FG1", skuName: "Groundnut 1L", sapCode: "FG1", rowCount: 2 }],
+    [{ sapCode: "FG1", onHand: 1234 }],
+    { FG1: 900 },
+  );
+  assert.equal(grouped[0].ownOnHandPieces, 1234);
+  assert.equal(grouped[0].mslPieces, 900);
 });
 
 test("groups SKU rows and ranks aggregate platform PO pieces highest to lowest", () => {

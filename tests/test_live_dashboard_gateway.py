@@ -1,4 +1,5 @@
 import importlib.util
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -151,6 +152,29 @@ class LiveDistributorProjectionTests(unittest.TestCase):
         self.assertEqual(antize["live"]["all"]["projected"], 125)
         self.assertEqual(antize["unresolvedGrnPieces"], 0)
         self.assertEqual(result["status"], "live-projection")
+
+
+class PlannerMslStoreTests(unittest.TestCase):
+    def test_persists_updates_and_clears_values_atomically(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "msl.json"
+            self.assertEqual(GATEWAY.read_msl_store(path)["values"], {})
+
+            saved = GATEWAY.update_msl_value("FG0000142", 2500, path)
+            self.assertEqual(saved["values"], {"FG0000142": 2500})
+            self.assertEqual(GATEWAY.read_msl_store(path)["values"], {"FG0000142": 2500})
+
+            cleared = GATEWAY.update_msl_value("FG0000142", None, path)
+            self.assertEqual(cleared["values"], {})
+            self.assertEqual(GATEWAY.read_msl_store(path)["values"], {})
+
+    def test_rejects_invalid_codes_and_quantities(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "msl.json"
+            for code, pieces in [("../../bad", 10), ("FG1", -1), ("FG1", 1.5), ("FG1", True)]:
+                with self.assertRaises(ValueError):
+                    GATEWAY.update_msl_value(code, pieces, path)
+            self.assertFalse(path.exists())
 
 
 if __name__ == "__main__":

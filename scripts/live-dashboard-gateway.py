@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Read-only live-data gateway for the Jivo Supply Control preview.
+"""Live-data and planner-state gateway for the Jivo Supply Control preview.
 
 The gateway keeps JIVO credentials server-side. It serves live GET projections at
-/api/live/* and reverse-proxies the Vinext application for every other route.
-It never calls a mutating source-system endpoint.
+/api/live/*, stores planner-owned MSL values, and reverse-proxies the Vinext
+application for every other route. It never calls a mutating JIVO source-system
+endpoint.
 """
 
 from __future__ import annotations
@@ -30,6 +31,7 @@ WAREHOUSE_NAME = "GUPTA FINISHED GOODS MART"
 CACHE_SECONDS = 30
 DISTRIBUTOR_CACHE_SECONDS = 300
 BASELINES_PATH = Path(__file__).parents[1] / "app/data/distributor-baselines.json"
+MSL_STORE_PATH = Path("/var/lib/jivo-supply-control/own-inventory-msl.json")
 TRACKED_DISTRIBUTORS = {
     "antize": ("CUSTA000927", "ANTIZE"),
     "chirag": ("CUSTA000354", "CHIRAG"),
@@ -49,6 +51,71 @@ HOP_BY_HOP_HEADERS = {
 _cache_lock = threading.Lock()
 _cache: dict[str, Any] = {"expires": 0.0, "payload": None}
 _distributor_cache: dict[str, Any] = {"expires": 0.0, "payload": None}
+_msl_lock = threading.Lock()
+
+
+def read_msl_store(path: Path = MSL_STORE_PATH) -> dict[str, Any]:
+    if not path.exists():
+        return {"status": "ok", "unit": "pieces", "updatedAt": None, "values": {}}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    values = payload.get("values")
+    if not isinstance(values, dict):
+        raise ValueError("MSL store values must be an object")
+    clean_values: dict[str, int] = {}
+    for sap_code, pieces in values.items():
+        if not re.fullmatch(r"[A-Z0-9_-]{1,64}", str(sap_code)):
+            raise ValueError("MSL store contains an invalid SAP code")
+        if (
+            isinstance(pieces, bool)
+            or not isinstance(pieces, int)
+            or pieces < 0
+            or pieces > 1_000_000_000
+        ):
+            raise ValueError("MSL store contains an invalid pieces value")
+        clean_values[str(sap_code)] = pieces
+    return {
+        "status": "ok",
+        "unit": "pieces",
+        "updatedAt": payload.get("updatedAt"),
+        "values": clean_values,
+    }
+
+
+def update_msl_value(
+    sap_code: str,
+    pieces: int | None,
+    path: Path = MSL_STORE_PATH,
+) -> dict[str, Any]:
+    if not re.fullmatch(r"[A-Z0-9_-]{1,64}", sap_code):
+        raise ValueError("Invalid SAP code")
+    if pieces is not None and (
+        isinstance(pieces, bool)
+        or not isinstance(pieces, int)
+        or pieces < 0
+        or pieces > 1_000_000_000
+    ):
+        raise ValueError("MSL pieces must be a whole number from 0 to 1,000,000,000")
+    with _msl_lock:
+        payload = read_msl_store(path)
+        values = dict(payload["values"])
+        if pieces is None:
+            values.pop(sap_code, None)
+        else:
+            values[sap_code] = pieces
+        result = {
+            "status": "ok",
+            "unit": "pieces",
+            "updatedAt": datetime.now(timezone.utc).isoformat(),
+            "values": values,
+        }
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_name(f".{path.name}.{threading.get_ident()}.tmp")
+        temporary.write_text(
+            json.dumps(result, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        temporary.replace(path)
+        return result
 
 
 def load_ecom_config(path: Path = CONFIG_PATH) -> tuple[str, str]:
@@ -474,6 +541,33 @@ class GatewayHandler(BaseHTTPRequestHandler):
         except Exception as exc:  # defensive boundary: never leak credentials
             self._json(502, {"status": "error", "error": str(exc)})
 
+    def _serve_msl(self) -> None:
+        try:
+            self._json(200, read_msl_store())
+        except Exception:
+            self._json(500, {"status": "error", "error": "Planner MSL store is unavailable"})
+
+    def _update_msl(self) -> None:
+        try:
+            length = int(self.headers.get("Content-Length") or 0)
+            if length < 1 or length > 4096:
+                self._json(400, {"status": "error", "error": "Invalid request size"})
+                return
+            payload = json.loads(self.rfile.read(length))
+            if not isinstance(payload, dict):
+                raise ValueError("Request body must be an object")
+            sap_code = payload.get("sapCode")
+            pieces = payload.get("pieces")
+            if not isinstance(sap_code, str):
+                raise ValueError("sapCode is required")
+            if pieces is not None and (isinstance(pieces, bool) or not isinstance(pieces, int)):
+                raise ValueError("pieces must be a whole number or null")
+            self._json(200, update_msl_value(sap_code, pieces))
+        except (json.JSONDecodeError, ValueError) as exc:
+            self._json(400, {"status": "error", "error": str(exc)})
+        except Exception:
+            self._json(500, {"status": "error", "error": "Planner MSL store is unavailable"})
+
     def _proxy(self) -> None:
         target = self.upstream + self.path
         length = int(self.headers.get("Content-Length") or 0)
@@ -514,6 +608,8 @@ class GatewayHandler(BaseHTTPRequestHandler):
             self._serve_inventory()
         elif route == "/api/live/distributors":
             self._serve_distributors()
+        elif route == "/api/planner/msl":
+            self._serve_msl()
         else:
             self._proxy()
 
@@ -522,6 +618,13 @@ class GatewayHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802
         self._proxy()
+
+    def do_PUT(self) -> None:  # noqa: N802
+        route = urllib.parse.urlsplit(self.path).path
+        if route == "/api/planner/msl":
+            self._update_msl()
+        else:
+            self._proxy()
 
 
 if __name__ == "__main__":

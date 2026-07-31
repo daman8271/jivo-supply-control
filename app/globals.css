@@ -2425,7 +2425,7 @@ td small {
 
 .replenishment-table {
   width: 100%;
-  min-width: 0;
+  min-width: 1500px;
   table-layout: fixed;
   border-collapse: collapse;
   font-size: 12px;
@@ -2446,7 +2446,7 @@ td small {
 }
 
 .replenishment-table th:first-child {
-  width: 22%;
+  width: 18%;
 }
 
 .replenishment-sort {
@@ -2600,23 +2600,31 @@ td small {
 }
 
 .replenishment-table th:nth-child(2) {
-  width: 16%;
+  width: 13%;
 }
 
 .replenishment-table th:nth-child(3) {
-  width: 14%;
+  width: 13%;
 }
 
 .replenishment-table th:nth-child(4) {
-  width: 16%;
+  width: 12%;
 }
 
 .replenishment-table th:nth-child(5) {
+  width: 10%;
+}
+
+.replenishment-table th:nth-child(6) {
   width: 15%;
 }
 
+.replenishment-table th:nth-child(7) {
+  width: 9%;
+}
+
 .replenishment-table th:last-child {
-  width: 17%;
+  width: 10%;
 }
 
 .replenishment-table td {
@@ -2627,6 +2635,67 @@ td small {
   overflow-wrap: anywhere;
   white-space: normal;
   vertical-align: top;
+}
+
+.own-stock-cell > b {
+  color: var(--green-2);
+}
+
+.msl-editor {
+  display: grid;
+  gap: 5px;
+}
+
+.msl-editor-control {
+  display: grid;
+  grid-template-columns: minmax(72px, 1fr) auto;
+  gap: 6px;
+}
+
+.msl-editor-control input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+
+.msl-editor-control input:focus-visible,
+.msl-editor-control button:focus-visible {
+  outline: 3px solid var(--sage);
+  outline-offset: 1px;
+}
+
+.msl-editor-control button {
+  padding: 7px 9px;
+  border: 1px solid var(--green-2);
+  border-radius: 8px;
+  background: var(--green-2);
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.msl-editor-control button:disabled {
+  border-color: var(--line-strong);
+  background: var(--panel);
+  color: var(--muted);
+  cursor: default;
+}
+
+.msl-editor small,
+.msl-unavailable {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.msl-editor .msl-error {
+  color: var(--red);
+  font-weight: 700;
 }
 
 .replenishment-table tr:hover td {
@@ -2711,7 +2780,7 @@ td small {
 
 .replenishment-formula {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1px;
   overflow: hidden;
   border: 1px solid var(--line);
