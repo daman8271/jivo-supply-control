@@ -24,6 +24,7 @@ from datetime import date, datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 CONFIG_PATH = Path.home() / ".config/jivo-ecom-pp-cli/config.toml"
 WAREHOUSE_CODE = "GP-FGM"
@@ -33,9 +34,12 @@ DISTRIBUTOR_CACHE_SECONDS = 300
 BASELINES_PATH = Path(__file__).parents[1] / "app/data/distributor-baselines.json"
 MSL_STORE_PATH = Path("/var/lib/jivo-supply-control/own-inventory-msl.json")
 TRACKED_DISTRIBUTORS = {
-    "antize": ("CUSTA000927", "ANTIZE"),
-    "chirag": ("CUSTA000354", "CHIRAG"),
-    "baba": ("CUSTA000900", "BABA LOKENATH"),
+    "chirag": {"code": "CUSTA000354", "alias": "CHIRAG", "leadTimeDays": 5},
+    "knowtable": {"code": "CUSTA000592", "alias": "KNOWTABLE", "leadTimeDays": 8},
+    "evara": {"code": "CUSTA000906", "alias": "EVARA", "leadTimeDays": 2},
+    "antize": {"code": "CUSTA000927", "alias": "ANTIZE", "leadTimeDays": 2},
+    "baba": {"code": "CUSTA000900", "alias": "BABA LOKENATH", "leadTimeDays": 8},
+    "sustainquest": {"code": "CUSTA000907", "alias": "SUSTAIN", "leadTimeDays": 2},
 }
 HOP_BY_HOP_HEADERS = {
     "connection",
@@ -276,7 +280,11 @@ def normalized_item_name(value: object) -> str:
 def movement_distributor(value: object) -> str | None:
     vendor = str(value or "").upper()
     return next(
-        (identifier for identifier, (_, alias) in TRACKED_DISTRIBUTORS.items() if alias in vendor),
+        (
+            identifier
+            for identifier, config in TRACKED_DISTRIBUTORS.items()
+            if str(config["alias"]) in vendor
+        ),
         None,
     )
 
@@ -336,7 +344,14 @@ def build_distributor_payload(
     observed_at: str | None = None,
 ) -> dict[str, Any]:
     baseline_by_id = {row["id"]: row for row in baseline_payload["distributors"]}
-    card_to_id = {code: identifier for identifier, (code, _) in TRACKED_DISTRIBUTORS.items()}
+    card_to_id = {
+        str(config["code"]): identifier
+        for identifier, config in TRACKED_DISTRIBUTORS.items()
+    }
+    observed = datetime.fromisoformat(
+        (observed_at or datetime.now(timezone.utc).isoformat()).replace("Z", "+00:00")
+    )
+    observed_business_date = observed.astimezone(ZoneInfo("Asia/Kolkata")).date()
     unique_names: dict[str, set[str]] = defaultdict(set)
     item_by_code: dict[str, dict[str, Any]] = {}
     for item in item_rows:
@@ -346,20 +361,32 @@ def build_distributor_payload(
             unique_names[normalized_item_name(item.get("ItemName"))].add(code)
 
     billing: dict[tuple[str, str], float] = defaultdict(float)
+    in_transit: dict[tuple[str, str], float] = defaultdict(float)
+    transit_arrivals: dict[tuple[str, str], set[str]] = defaultdict(set)
     for row in sales_rows:
         identifier = card_to_id.get(str(row.get("CardCode") or ""))
         if not identifier:
             continue
-        baseline = baseline_by_id[identifier]
         document_date = str(row.get("DocDate") or "")[:10]
-        if document_date <= baseline["asOf"]:
+        try:
+            billed_on = date.fromisoformat(document_date)
+        except ValueError:
             continue
         quantity = float(row.get("Quantity") or 0)
         if str(row.get("Type") or "").upper() == "SALES RETURN":
             quantity = -abs(quantity)
         if quantity == 0:
             continue
-        billing[(identifier, str(row.get("ItemCode") or ""))] += quantity
+        code = str(row.get("ItemCode") or "")
+        lead_time_days = int(TRACKED_DISTRIBUTORS[identifier]["leadTimeDays"])
+        expected_arrival = billed_on + timedelta(days=lead_time_days)
+        if expected_arrival > observed_business_date:
+            in_transit[(identifier, code)] += quantity
+            transit_arrivals[(identifier, code)].add(expected_arrival.isoformat())
+            continue
+        baseline = baseline_by_id.get(identifier)
+        if baseline and document_date > baseline["asOf"]:
+            billing[(identifier, code)] += quantity
 
     grn: dict[tuple[str, str], float] = defaultdict(float)
     unresolved_grn: dict[str, float] = defaultdict(float)
@@ -368,7 +395,9 @@ def build_distributor_payload(
         identifier = movement_distributor(row.get("vendor_new") or row.get("vendor_name"))
         if not identifier:
             continue
-        baseline = baseline_by_id[identifier]
+        baseline = baseline_by_id.get(identifier)
+        if not baseline:
+            continue
         delivery_date = str(row.get("delivery_date") or "")[:10]
         if delivery_date <= baseline["asOf"]:
             continue
@@ -394,13 +423,20 @@ def build_distributor_payload(
         grn[(identifier, next(iter(candidates)))] += quantity
 
     distributors: list[dict[str, Any]] = []
-    all_totals = {"opening": 0.0, "billing": 0.0, "grn": 0.0, "projected": 0.0}
-    premium_totals = {"opening": 0.0, "billing": 0.0, "grn": 0.0, "projected": 0.0}
-    for identifier in ("chirag", "antize", "baba"):
-        baseline = baseline_by_id[identifier]
+    all_totals = {
+        "opening": 0.0,
+        "billing": 0.0,
+        "inTransit": 0.0,
+        "grn": 0.0,
+        "projected": 0.0,
+    }
+    premium_totals = dict(all_totals)
+    for identifier, baseline in baseline_by_id.items():
         rows_by_code = {row["sapCode"]: dict(row) for row in baseline["rows"]}
         movement_codes = {
-            code for (owner, code) in set(billing) | set(grn) if owner == identifier and code
+            code
+            for (owner, code) in set(billing) | set(in_transit) | set(grn)
+            if owner == identifier and code
         }
         for code in movement_codes - set(rows_by_code):
             item_name = str(item_by_code.get(code, {}).get("ItemName") or code)
@@ -417,6 +453,7 @@ def build_distributor_payload(
         for code, source in rows_by_code.items():
             opening = float(source["usableOpeningPieces"])
             billed = billing[(identifier, code)]
+            travelling = in_transit[(identifier, code)]
             accepted = grn[(identifier, code)]
             projected = opening + billed - accepted
             item_head, category = classify_item(source.get("itemName") or code)
@@ -426,6 +463,10 @@ def build_distributor_payload(
                     "itemHead": item_head,
                     "category": category,
                     "billingPieces": billed,
+                    "inTransitPieces": travelling,
+                    "inTransitExpectedArrivalDate": min(
+                        transit_arrivals[(identifier, code)], default=None
+                    ),
                     "grnPieces": accepted,
                     "projectedPieces": projected,
                     "status": "exception" if projected < 0 or source["openingStatus"] != "qualified" else "qualified",
@@ -437,6 +478,7 @@ def build_distributor_payload(
             return {
                 "opening": sum(float(row["usableOpeningPieces"]) for row in scoped),
                 "billing": sum(float(row["billingPieces"]) for row in scoped),
+                "inTransit": sum(float(row["inTransitPieces"]) for row in scoped),
                 "grn": sum(float(row["grnPieces"]) for row in scoped),
                 "projected": sum(float(row["projectedPieces"]) for row in scoped),
             }
@@ -459,21 +501,53 @@ def build_distributor_payload(
                 "activeSkuCount": sum(row["projectedPieces"] != 0 for row in projected_rows),
                 "premiumSkuCount": sum(row["itemHead"] == "PREMIUM" for row in projected_rows),
                 "unresolvedGrnPieces": unresolved_grn[identifier],
-                "live": {"leadTimeDays": None, "all": all_scope, "premium": premium_scope},
+                "live": {
+                    "leadTimeDays": int(TRACKED_DISTRIBUTORS[identifier]["leadTimeDays"]),
+                    "all": all_scope,
+                    "premium": premium_scope,
+                },
                 "rows": sorted(projected_rows, key=lambda row: (row["status"] != "exception", row["projectedPieces"])),
+            }
+        )
+
+    transit = []
+    for identifier, config in TRACKED_DISTRIBUTORS.items():
+        transit_rows = []
+        for (owner, code), pieces in in_transit.items():
+            if owner != identifier or pieces == 0:
+                continue
+            item_name = str(item_by_code.get(code, {}).get("ItemName") or code)
+            arrivals = sorted(transit_arrivals[(identifier, code)])
+            transit_rows.append(
+                {
+                    "sapCode": code,
+                    "itemName": item_name,
+                    "inTransitPieces": pieces,
+                    "expectedArrivalDate": arrivals[0] if arrivals else None,
+                    "arrivalDates": arrivals,
+                }
+            )
+        transit.append(
+            {
+                "id": identifier,
+                "code": config["code"],
+                "leadTimeDays": int(config["leadTimeDays"]),
+                "pieces": sum(float(row["inTransitPieces"]) for row in transit_rows),
+                "rows": sorted(transit_rows, key=lambda row: row["sapCode"]),
             }
         )
 
     return {
         "status": "live-projection",
-        "observedAt": observed_at or datetime.now(timezone.utc).isoformat(),
-        "formula": baseline_payload["formula"],
+        "observedAt": observed.isoformat(),
+        "formula": "Projected distributor stock = qualified physical opening + arrived SAP billing - mapped platform GRN; recent Jivo Mart billing remains in transit until the distributor lead time elapses",
         "sources": [
             "Qualified distributor physical-count workbooks",
             "Ecom SAP sales-analysis billing",
             "Ecom master_po delivered/GRN rows",
         ],
         "distributors": distributors,
+        "transit": transit,
         "totals": {"all": all_totals, "premium": premium_totals},
     }
 
@@ -490,8 +564,12 @@ def get_live_distributors(force: bool = False) -> dict[str, Any]:
 
     baseline_payload = json.loads(BASELINES_PATH.read_text())
     baseline_dates = [row["asOf"] for row in baseline_payload["distributors"]]
-    start = min(date.fromisoformat(value) for value in baseline_dates) + timedelta(days=1)
     end = date.today()
+    baseline_start = min(date.fromisoformat(value) for value in baseline_dates) + timedelta(days=1)
+    transit_start = end - timedelta(
+        days=max(int(config["leadTimeDays"]) for config in TRACKED_DISTRIBUTORS.values()) - 1
+    )
+    start = min(baseline_start, transit_start)
     sales_rows = fetch_sales_analysis(start, end)
     items = fetch_json("/api/sap/items?page=0&page_size=2000")
     master_po = fetch_recent_master_po(min(baseline_dates))

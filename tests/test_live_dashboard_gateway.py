@@ -83,6 +83,22 @@ class LiveInventoryProjectionTests(unittest.TestCase):
 
 
 class LiveDistributorProjectionTests(unittest.TestCase):
+    def test_configures_the_confirmed_lead_time_for_all_six_distributors(self):
+        self.assertEqual(
+            {
+                identifier: config["leadTimeDays"]
+                for identifier, config in GATEWAY.TRACKED_DISTRIBUTORS.items()
+            },
+            {
+                "chirag": 5,
+                "knowtable": 8,
+                "evara": 2,
+                "antize": 2,
+                "baba": 8,
+                "sustainquest": 2,
+            },
+        )
+
     def test_projects_qualified_opening_with_post_cutoff_billing_and_grn(self):
         baselines = {
             "formula": "opening + billing - GRN",
@@ -147,11 +163,105 @@ class LiveDistributorProjectionTests(unittest.TestCase):
         antize = next(row for row in result["distributors"] if row["id"] == "antize")
 
         self.assertEqual(antize["live"]["all"]["opening"], 100)
-        self.assertEqual(antize["live"]["all"]["billing"], 40)
+        self.assertEqual(antize["live"]["all"]["billing"], 0)
+        self.assertEqual(antize["live"]["all"]["inTransit"], 40)
         self.assertEqual(antize["live"]["all"]["grn"], 15)
-        self.assertEqual(antize["live"]["all"]["projected"], 125)
+        self.assertEqual(antize["live"]["all"]["projected"], 85)
         self.assertEqual(antize["unresolvedGrnPieces"], 0)
         self.assertEqual(result["status"], "live-projection")
+
+    def test_holds_recent_billing_in_transit_until_each_distributor_lead_time(self):
+        baselines = {
+            "formula": "opening + arrived billing - GRN",
+            "distributors": [
+                {
+                    "id": "chirag",
+                    "code": "CUSTA000354",
+                    "name": "Chirag Enterprises Mumbai",
+                    "asOf": "2026-07-20",
+                    "sourceFile": "chirag.xlsx",
+                    "negativeOpeningSkus": 0,
+                    "rows": [
+                        {
+                            "sapCode": "FG1",
+                            "itemName": "GROUNDNUT OIL 1 LTR",
+                            "reportedOpeningPieces": 100,
+                            "usableOpeningPieces": 100,
+                            "openingStatus": "qualified",
+                        }
+                    ],
+                },
+                {
+                    "id": "antize",
+                    "code": "CUSTA000927",
+                    "name": "Antize Foods",
+                    "asOf": "2026-07-20",
+                    "sourceFile": "antize.xlsx",
+                    "negativeOpeningSkus": 0,
+                    "rows": [
+                        {
+                            "sapCode": "FG1",
+                            "itemName": "GROUNDNUT OIL 1 LTR",
+                            "reportedOpeningPieces": 100,
+                            "usableOpeningPieces": 100,
+                            "openingStatus": "qualified",
+                        }
+                    ],
+                },
+            ],
+        }
+        sales = [
+            {
+                "CardCode": "CUSTA000354",
+                "DocDate": "2026-07-27T00:00:00",
+                "ItemCode": "FG1",
+                "Quantity": 40,
+                "Type": "Sales",
+            },
+            {
+                "CardCode": "CUSTA000354",
+                "DocDate": "2026-07-28T00:00:00",
+                "ItemCode": "FG1",
+                "Quantity": 60,
+                "Type": "Sales",
+            },
+            {
+                "CardCode": "CUSTA000927",
+                "DocDate": "2026-07-29T00:00:00",
+                "ItemCode": "FG1",
+                "Quantity": 25,
+                "Type": "Sales",
+            },
+            {
+                "CardCode": "CUSTA000592",
+                "DocDate": "2026-07-29T00:00:00",
+                "ItemCode": "FG1",
+                "Quantity": 15,
+                "Type": "Sales",
+            },
+        ]
+
+        result = GATEWAY.build_distributor_payload(
+            baselines,
+            sales,
+            [],
+            [{"ItemCode": "FG1", "ItemName": "GROUNDNUT OIL 1 LTR"}],
+            "2026-07-31T06:30:00+00:00",
+        )
+        chirag = next(row for row in result["distributors"] if row["id"] == "chirag")
+        antize = next(row for row in result["distributors"] if row["id"] == "antize")
+        transit = {row["id"]: row for row in result["transit"]}
+
+        self.assertEqual(chirag["live"]["leadTimeDays"], 5)
+        self.assertEqual(chirag["live"]["all"]["billing"], 0)
+        self.assertEqual(chirag["live"]["all"]["inTransit"], 100)
+        self.assertEqual(chirag["live"]["all"]["projected"], 100)
+        self.assertEqual(antize["live"]["all"]["billing"], 25)
+        self.assertEqual(antize["live"]["all"]["inTransit"], 0)
+        self.assertEqual(antize["live"]["all"]["projected"], 125)
+        self.assertEqual(transit["knowtable"]["leadTimeDays"], 8)
+        self.assertEqual(transit["knowtable"]["pieces"], 15)
+        self.assertEqual(transit["knowtable"]["rows"][0]["expectedArrivalDate"], "2026-08-06")
 
 
 class PlannerMslStoreTests(unittest.TestCase):

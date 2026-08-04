@@ -2425,7 +2425,7 @@ td small {
 
 .replenishment-table {
   width: 100%;
-  min-width: 1500px;
+  min-width: 1650px;
   table-layout: fixed;
   border-collapse: collapse;
   font-size: 12px;
@@ -2446,7 +2446,7 @@ td small {
 }
 
 .replenishment-table th:first-child {
-  width: 18%;
+  width: 17%;
 }
 
 .replenishment-sort {
@@ -2600,15 +2600,15 @@ td small {
 }
 
 .replenishment-table th:nth-child(2) {
-  width: 13%;
+  width: 11%;
 }
 
 .replenishment-table th:nth-child(3) {
-  width: 13%;
+  width: 11%;
 }
 
 .replenishment-table th:nth-child(4) {
-  width: 12%;
+  width: 10%;
 }
 
 .replenishment-table th:nth-child(5) {
@@ -2616,10 +2616,14 @@ td small {
 }
 
 .replenishment-table th:nth-child(6) {
-  width: 15%;
+  width: 9%;
 }
 
 .replenishment-table th:nth-child(7) {
+  width: 13%;
+}
+
+.replenishment-table th:nth-child(8) {
   width: 9%;
 }
 

@@ -24,6 +24,7 @@ export function replenishmentSortValue(row, key) {
   if (key === "stock") {
     return numeric(row.qualifiedStockPieces ?? row.evidencedStockPieces);
   }
+  if (key === "inTransit") return numeric(row.inTransitPieces);
   if (key === "ownOnHand") return numeric(row.ownOnHandPieces);
   if (key === "msl") return numeric(row.mslPieces);
   if (key === "need") {
@@ -128,6 +129,9 @@ export function groupReplenishmentRows(rows) {
         liveStockDistributorNames: [],
         liveStockDistributors: 0,
         stockExceptionCount: 0,
+        inTransitPieces: 0,
+        inTransitDistributorNames: [],
+        inTransitDistributors: 0,
         rawNeedPieces: 0,
         recommendedPieces: 0,
         blockedOpenPoPieces: 0,
@@ -154,6 +158,10 @@ export function groupReplenishmentRows(rows) {
     }
     if (row.liveStockApplied) group.liveStockDistributorNames.push(row.distributorName);
     if (row.stockStatus?.includes("exception")) group.stockExceptionCount += 1;
+    group.inTransitPieces += numeric(row.inTransitPieces) ?? 0;
+    if ((numeric(row.inTransitPieces) ?? 0) > 0) {
+      group.inTransitDistributorNames.push(row.distributorName);
+    }
     group.rawNeedPieces += numeric(row.rawNeedPieces) ?? 0;
     group.recommendedPieces += numeric(row.recommendedPieces) ?? 0;
     if (row.recommendedPieces === null && (numeric(row.openPoPieces) ?? 0) > 0) {
@@ -175,6 +183,9 @@ export function groupReplenishmentRows(rows) {
       evidencedStockPieces: row.stockQualified
         ? numeric(row.evidencedStockPieces)
         : null,
+      inTransitPieces: numeric(row.inTransitPieces),
+      inTransitLeadDays: numeric(row.inTransitLeadDays),
+      inTransitExpectedArrivalDate: row.inTransitExpectedArrivalDate ?? null,
       stockStatus: row.stockStatus,
       status: row.status,
       blocker: row.blocker,
@@ -191,8 +202,10 @@ export function groupReplenishmentRows(rows) {
       group.qualifiedStockDistributorNames,
     ).length;
     group.liveStockDistributors = unique(group.liveStockDistributorNames).length;
+    group.inTransitDistributors = unique(group.inTransitDistributorNames).length;
     delete group.qualifiedStockDistributorNames;
     delete group.liveStockDistributorNames;
+    delete group.inTransitDistributorNames;
     if (!group.sapCode) group.status = "identity-blocked";
     else if (group.blockedOpenPoPieces > 0) group.status = "blocked";
     else if (group.recommendedPieces > 0) group.status = "replenish";

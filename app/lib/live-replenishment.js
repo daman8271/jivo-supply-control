@@ -18,11 +18,50 @@ export function applyLiveDistributorStock(rows, liveProjection) {
       new Map((distributor.rows ?? []).map((row) => [row.sapCode, row])),
     ]),
   );
+  const transit = new Map(
+    (liveProjection.transit ?? []).map((distributor) => [
+      distributor.id,
+      {
+        leadTimeDays: Number(distributor.leadTimeDays),
+        rows: new Map((distributor.rows ?? []).map((row) => [row.sapCode, row])),
+      },
+    ]),
+  );
 
   return rows.map((row) => {
     const positions = tracked.get(row.distributorId);
+    const transitDistributor = transit.get(row.distributorId);
+    const transitPosition = row.sapCode
+      ? transitDistributor?.rows.get(row.sapCode) ?? null
+      : null;
+    const inTransitPieces = row.sapCode && transitDistributor
+      ? Number(transitPosition?.inTransitPieces ?? 0)
+      : null;
+    const inboundQualified = row.sapCode ? Boolean(transitDistributor) : false;
+
     if (!positions || !row.sapCode) {
-      return { ...row, liveStockApplied: false };
+      const calculation = calculatePoReplenishment({
+        openPoPieces: row.openPoPieces,
+        usableStockPieces: row.usableStockPieces,
+        confirmedInboundPieces: inTransitPieces,
+        inboundQualified,
+        casePack: row.casePack,
+        stockQualified: row.stockQualified,
+      });
+      return {
+        ...row,
+        liveStockApplied: false,
+        inTransitPieces,
+        inTransitLeadDays: transitDistributor?.leadTimeDays ?? null,
+        inTransitExpectedArrivalDate: transitPosition?.expectedArrivalDate ?? null,
+        confirmedInboundPieces: inTransitPieces,
+        confirmedInboundIncludedPieces: inTransitPieces,
+        inboundQualified,
+        rawNeedPieces: calculation.rawNeedPieces,
+        recommendedPieces: calculation.recommendedPieces,
+        status: row.sapCode ? calculation.status : row.status,
+        blocker: row.sapCode ? calculation.blocker : row.blocker,
+      };
     }
 
     const position = positions.get(row.sapCode) ?? null;
@@ -32,8 +71,8 @@ export function applyLiveDistributorStock(rows, liveProjection) {
     const calculation = calculatePoReplenishment({
       openPoPieces: row.openPoPieces,
       usableStockPieces,
-      confirmedInboundPieces: row.confirmedInboundPieces,
-      inboundQualified: row.inboundQualified,
+      confirmedInboundPieces: inTransitPieces,
+      inboundQualified,
       casePack: row.casePack,
       stockQualified,
     });
@@ -50,6 +89,12 @@ export function applyLiveDistributorStock(rows, liveProjection) {
           : "live-qualified-zero",
       stockQualified,
       liveStockApplied: true,
+      inTransitPieces,
+      inTransitLeadDays: transitDistributor?.leadTimeDays ?? null,
+      inTransitExpectedArrivalDate: transitPosition?.expectedArrivalDate ?? null,
+      confirmedInboundPieces: inTransitPieces,
+      confirmedInboundIncludedPieces: inTransitPieces,
+      inboundQualified,
       rawNeedPieces: calculation.rawNeedPieces,
       recommendedPieces: calculation.recommendedPieces,
       status: calculation.status,

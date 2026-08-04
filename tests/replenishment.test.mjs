@@ -258,6 +258,40 @@ test("uses the exact Distributor network live SOH in SKU replenishment", () => {
   assert.equal(liveRow.liveStockApplied, true);
 });
 
+test("uses Jivo Mart billing in transit as qualified inbound with distributor lead time", () => {
+  const source = snapshot.rows.find(
+    (row) => row.distributorId === "knowtable" && row.sapCode === "FG0000142",
+  );
+  assert.ok(source);
+
+  const [liveRow] = applyLiveDistributorStock([source], {
+    status: "live-projection",
+    observedAt: "2026-07-31T06:30:00+00:00",
+    distributors: [],
+    transit: [
+      {
+        id: "knowtable",
+        leadTimeDays: 8,
+        pieces: 72,
+        rows: [
+          {
+            sapCode: "FG0000142",
+            inTransitPieces: 72,
+            expectedArrivalDate: "2026-08-06",
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.equal(liveRow.liveStockApplied, false);
+  assert.equal(liveRow.inTransitPieces, 72);
+  assert.equal(liveRow.inTransitLeadDays, 8);
+  assert.equal(liveRow.inTransitExpectedArrivalDate, "2026-08-06");
+  assert.equal(liveRow.confirmedInboundPieces, 72);
+  assert.equal(liveRow.inboundQualified, true);
+});
+
 test("treats an absent SKU as qualified zero only for a complete live distributor", () => {
   const source = snapshot.rows.find(
     (row) => row.distributorId === "antize" && row.sapCode === "FG0000142",

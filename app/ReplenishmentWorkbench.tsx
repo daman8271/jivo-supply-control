@@ -17,6 +17,11 @@ import {
 
 type Snapshot = typeof replenishmentData;
 type Row = Snapshot["rows"][number];
+type LiveRow = Row & {
+  inTransitPieces: number | null;
+  inTransitLeadDays: number | null;
+  inTransitExpectedArrivalDate: string | null;
+};
 type GroupDetail = {
   id: string;
   distributorName: string;
@@ -27,6 +32,9 @@ type GroupDetail = {
   platforms: string[];
   poNumbers: string[];
   evidencedStockPieces: number | null;
+  inTransitPieces: number | null;
+  inTransitLeadDays: number | null;
+  inTransitExpectedArrivalDate: string | null;
   stockStatus: string;
   status: string;
   blocker: string | null;
@@ -53,6 +61,8 @@ type GroupedRow = {
   qualifiedStockDistributors: number;
   liveStockDistributors: number;
   stockExceptionCount: number;
+  inTransitPieces: number;
+  inTransitDistributors: number;
   rawNeedPieces: number;
   recommendedPieces: number;
   blockedOpenPoPieces: number;
@@ -63,13 +73,14 @@ type TableMetrics = {
   ownOnHandPieces: number | null;
   mslPieces: number | null;
 };
-type DisplayRow = ((Row & { grouped?: false }) | GroupedRow) & TableMetrics;
+type DisplayRow = ((LiveRow & { grouped?: false }) | GroupedRow) & TableMetrics;
 type StatusFilter = "attention" | "requirement" | "replenish" | "blocked" | "all";
 type SortKey =
   | "identity"
   | "required"
   | "openPo"
   | "stock"
+  | "inTransit"
   | "ownOnHand"
   | "msl"
   | "need"
@@ -86,6 +97,16 @@ type LiveProjection = {
       sapCode: string;
       projectedPieces: number;
       status: string;
+    }>;
+  }>;
+  transit?: Array<{
+    id: string;
+    leadTimeDays: number;
+    pieces: number;
+    rows?: Array<{
+      sapCode: string;
+      inTransitPieces: number;
+      expectedArrivalDate: string | null;
     }>;
   }>;
 };
@@ -259,7 +280,7 @@ export default function ReplenishmentWorkbench({
     [selectedDistributors],
   );
   const canonicalRows = useMemo(
-    () => applyLiveDistributorStock(replenishmentData.rows, liveDistributors) as Row[],
+    () => applyLiveDistributorStock(replenishmentData.rows, liveDistributors) as LiveRow[],
     [liveDistributors],
   );
 
@@ -418,6 +439,10 @@ export default function ReplenishmentWorkbench({
     (sum, row) => sum + (row.requiredInventoryPieces ?? 0),
     0,
   );
+  const visibleInTransit = rows.reduce(
+    (sum, row) => sum + (row.inTransitPieces ?? 0),
+    0,
+  );
   const canonicalRecommendedPieces = canonicalRows.reduce(
     (sum, row) => sum + (row.recommendedPieces ?? 0),
     0,
@@ -462,6 +487,13 @@ export default function ReplenishmentWorkbench({
         (sum, row) => sum + unqualifiedRequirementPieces(row),
         0,
       ),
+      inTransitPieces: distributorRows.reduce(
+        (sum, row) => sum + (row.inTransitPieces ?? 0),
+        0,
+      ),
+      leadTimeDays:
+        distributorRows.find((row) => row.inTransitLeadDays != null)
+          ?.inTransitLeadDays ?? null,
     };
   });
 
@@ -544,6 +576,9 @@ export default function ReplenishmentWorkbench({
             <strong>{item.name}</strong>
             <span>{number.format(item.openPoPieces)} PO pcs</span>
             <span>{number.format(item.requiredInventoryPieces)} qualified required pcs</span>
+            <span>
+              {number.format(item.inTransitPieces)} in transit · {item.leadTimeDays ?? "—"} day lead
+            </span>
             <small>
               {number.format(item.recommendedPieces)} replenish · {number.format(item.blockedPieces)} blocked
             </small>
@@ -623,6 +658,7 @@ export default function ReplenishmentWorkbench({
           <span><b>{number.format(rows.length)}</b> visible {groupMode === "sku" ? "SKU groups" : "rows"}</span>
           <span><b>{number.format(visibleRequiredInventory)}</b> required inventory pcs</span>
           <span><b>{number.format(visibleOpenPo)}</b> open PO pcs</span>
+          <span><b>{number.format(visibleInTransit)}</b> in-transit pcs</span>
           <span><b>{number.format(visibleRecommended)}</b> recommended pcs</span>
           <span><b>{number.format(visibleBlocked)}</b> blocked-demand pcs</span>
           <span><b>{liveInventory.warehouseCode}</b> own on hand · {liveInventory.status}</span>
@@ -648,6 +684,7 @@ export default function ReplenishmentWorkbench({
                 <SortableHeader label="Required inventory" sortKey="required" sort={sort} onSort={toggleSort} />
                 <SortableHeader label="Platform PO orders" sortKey="openPo" sort={sort} onSort={toggleSort} />
                 <SortableHeader label="Stock / inbound" sortKey="stock" sort={sort} onSort={toggleSort} />
+                <SortableHeader label="In transit" sortKey="inTransit" sort={sort} onSort={toggleSort} />
                 <SortableHeader label="Own on hand" sortKey="ownOnHand" sort={sort} onSort={toggleSort} />
                 <SortableHeader label="Own MSL" sortKey="msl" sort={sort} onSort={toggleSort} />
                 <SortableHeader label="Need / replenish" sortKey="need" sort={sort} onSort={toggleSort} />
@@ -701,6 +738,11 @@ export default function ReplenishmentWorkbench({
                       <span>{row.qualifiedStockDistributors}/{row.distributorCount} distributor positions qualified</span>
                       <small>{row.liveStockDistributors} live · {row.stockExceptionCount} exceptions</small>
                     </td>
+                    <td>
+                      <b>{number.format(row.inTransitPieces)}</b>
+                      <span>Jivo Mart billed · not yet in SOH</span>
+                      <small>{row.inTransitDistributors} distributor positions currently moving</small>
+                    </td>
                     <td className="own-stock-cell">
                       <b>{!row.sapCode ? "SAP identity required" : row.ownOnHandPieces === null ? "No stock row" : number.format(row.ownOnHandPieces)}</b>
                       <span>{liveInventory.warehouseCode} SAP on hand</span>
@@ -732,7 +774,7 @@ export default function ReplenishmentWorkbench({
                       id={`breakdown-${row.id.replaceAll(":", "-")}`}
                       className="replenishment-group-detail-row"
                     >
-                      <td colSpan={8}>
+                      <td colSpan={9}>
                         <div className="replenishment-breakdown-heading">
                           <strong>{row.skuName} distributor and platform breakdown</strong>
                           <span>{number.format(row.openPoPieces)} total pieces reconcile to the grouped row</span>
@@ -745,6 +787,7 @@ export default function ReplenishmentWorkbench({
                                 <th>Platform</th>
                                 <th>Open PO</th>
                                 <th>Qualified SOH</th>
+                                <th>In transit</th>
                                 <th>Identity / status</th>
                               </tr>
                             </thead>
@@ -766,6 +809,18 @@ export default function ReplenishmentWorkbench({
                                       ? "Unqualified"
                                       : `${number.format(detail.evidencedStockPieces)} pcs`}
                                     <small>{detail.stockStatus.replaceAll("-", " ")}</small>
+                                  </td>
+                                  <td>
+                                    <strong>
+                                      {detail.inTransitPieces === null
+                                        ? "Unqualified"
+                                        : `${number.format(detail.inTransitPieces)} pcs`}
+                                    </strong>
+                                    <small>
+                                      {detail.inTransitLeadDays === null
+                                        ? "Lead-time evidence unavailable"
+                                        : `${detail.inTransitLeadDays} day lead${detail.inTransitExpectedArrivalDate ? ` · ETA ${detail.inTransitExpectedArrivalDate}` : " · no current shipment"}`}
+                                    </small>
                                   </td>
                                   <td>
                                     <span className={`replenishment-status ${detail.status}`}>
@@ -844,7 +899,23 @@ export default function ReplenishmentWorkbench({
                               ? `Tracker BAL ${number.format(row.trackerBalancePieces)} · ${row.stockAsOf ?? "date missing"}`
                               : "No qualified SKU stock row"}
                     </small>
-                    <small><b>Inbound</b> Unknown · excluded; explicit zero evidence required</small>
+                    <small>Arrived billing only; active transit is kept separate</small>
+                  </td>
+                  <td>
+                    <b>{row.inTransitPieces == null ? "Unknown" : number.format(row.inTransitPieces)}</b>
+                    <span>
+                      {row.inTransitLeadDays == null
+                        ? "Lead time unavailable"
+                        : `${row.inTransitLeadDays} day distributor lead`}
+                    </span>
+                    <small>
+                      {row.inTransitExpectedArrivalDate
+                        ? `Expected in SOH ${row.inTransitExpectedArrivalDate}`
+                        : row.inTransitPieces === 0
+                          ? "No open Jivo Mart billing in transit"
+                          : "Expected arrival unavailable"}
+                    </small>
+                    <small>SAP billing · included as confirmed inbound until arrival</small>
                   </td>
                   <td className="own-stock-cell">
                     <b>{!row.sapCode ? "SAP identity required" : row.ownOnHandPieces === null ? "No stock row" : number.format(row.ownOnHandPieces)}</b>
@@ -878,7 +949,7 @@ export default function ReplenishmentWorkbench({
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="replenishment-empty">No SKU rows match the selected filters.</td>
+                  <td colSpan={9} className="replenishment-empty">No SKU rows match the selected filters.</td>
                 </tr>
               )}
             </tbody>
@@ -889,7 +960,7 @@ export default function ReplenishmentWorkbench({
       <section className="replenishment-formula" aria-label="Calculation and evidence rules">
         <div>
           <span>PO-only formula</span>
-          <strong>{replenishmentData.policy.formula}</strong>
+          <strong>required = max(0, open PO − qualified SOH − Jivo Mart billing in transit)</strong>
           <small>{replenishmentData.policy.quantityUnit}</small>
           <small>Then round up to the qualified case pack. Missing or stale evidence blocks every exact quantity.</small>
         </div>
@@ -902,7 +973,7 @@ export default function ReplenishmentWorkbench({
           </strong>
           <small>
             {liveDistributors.status === "live-projection"
-              ? `Opening + SAP billing − platform GRN · ${formatSourceAsOf(liveDistributors.observedAt)}`
+              ? `Opening + arrived SAP billing − platform GRN; billing remains in transit for each distributor's lead time · ${formatSourceAsOf(liveDistributors.observedAt)}`
               : "Dated stock remains visible but cannot qualify a recommendation."}
           </small>
         </div>

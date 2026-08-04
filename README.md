@@ -26,6 +26,9 @@ and distributor reconciliation.
   rounded up to the next piece
 - Calculates a PO-only distributor replenishment draft from open PO balance,
   qualified SKU stock, confirmed inbound, and case-pack rounding
+- Separates recent Jivo Mart billing into an auditable **In Transit** column
+  using distributor-specific lead times; stock enters distributor SOH only when
+  the configured lead time has elapsed
 - Keeps unmapped PO identities, missing openings, stale stock, negative
   reconciliation rows, unknown inbound, UOM conflicts, and missing case packs
   visibly blocked
@@ -64,13 +67,18 @@ Open PO balance = max(0, order quantity - source delivered quantity)
 
 Raw replenishment = max(0, open PO balance
                            - qualified usable distributor stock
-                           - confirmed inbound)
+                           - confirmed Jivo Mart billing in transit)
 
 Recommended replenishment = raw replenishment rounded up to case pack
 
 Required inventory target = ceil(80% × previous calendar month's
                                  non-cancelled ordered PO pieces)
 ```
+
+Current calendar-day transit defaults are Chirag 5, Knowtable 8, Evara 2,
+Antize 2, Baba Lokenath 8, and Sustainquest 2. Before the expected-arrival date,
+billed pieces remain confirmed inbound and do not enter distributor SOH. On the
+arrival date they become arrived billing in `SOH = opening + arrived billing − GRN`.
 
 The builder accepts only explicitly qualified open statuses, validates delivered
 quantity against filled quantity, collapses exact duplicate PO lines, and fails
@@ -142,12 +150,9 @@ unqualified evidence, but no required inventory target is invented for them.
 - No active SAP approval template covers the forecast or production order
 - Approval and dispatch stages show readiness only; there is no live execution,
   automated release, or source-system write-back
-- The current repository uses a dated snapshot; unattended refresh jobs are not
-  included
-- Distributor-SKU inbound evidence is not yet connected. Unknown inbound is not
-  converted to zero; it independently blocks every exact raw need and recommendation
-  until a qualified inbound feed supplies either a confirmed quantity or an
-  explicitly evidenced zero
+- The public application includes dated fallback snapshots. The optional live
+  gateway requires private read-only JIVO credentials that are deliberately not
+  committed to this repository
 - Product identity, UOM, and case-pack evidence is company/schema-qualified.
   The Control Panel calculator export is JIVO_OIL evidence and is never applied
   to a same-code JIVO_MART SKU
